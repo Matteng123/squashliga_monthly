@@ -35,7 +35,6 @@ export default function Home() {
   const [page, setPage] = useState<'role' | 'player' | 'admin' | 'mail'>('role')
   const [showPaymentMethodSelector, setShowPaymentMethodSelector] = useState(false)
 
-
   useEffect(() => {
     if (months.length === 0) {
       initApp()
@@ -61,13 +60,22 @@ export default function Home() {
   }, [currentMonth, selectedMonth])
 
   useEffect(() => {
-    if (selectedMonth && currentDate >= selectedMonth.deadlineDate) {
+    if (selectedMonth) {
+      const updatedMonth = months.find(m => m.id === selectedMonth.id)
+      if (updatedMonth && updatedMonth !== selectedMonth) {
+        setSelectedMonth(updatedMonth)
+      }
+    }
+  }, [months, selectedMonth])
+
+  useEffect(() => {
+    if (page === 'player' && selectedMonth && currentDate >= selectedMonth.deadlineDate) {
       const playerPaymentStatus = selectedMonth.playerStatus.get(currentUserId || '')
       if (playerPaymentStatus?.status === 'editing') {
         autoCommitUnfinishedMonths(selectedMonth.id)
       }
     }
-  }, [selectedMonth, currentDate, currentUserId, autoCommitUnfinishedMonths])
+  }, [page, selectedMonth, currentDate, currentUserId, autoCommitUnfinishedMonths])
 
   if (!currentUserId || !currentUser) {
     return (
@@ -153,7 +161,7 @@ export default function Home() {
 
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col pb-40">
-        <Header />
+        <Header onMailClick={() => setPage('mail')} />
 
         <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-6 space-y-6">
           <div className="card bg-gradient-to-r from-orange-600/20 to-emerald-600/20 border-orange-600/50">
@@ -238,7 +246,7 @@ export default function Home() {
 
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col">
-        <Header />
+        <Header onMailClick={() => setPage('mail')} />
 
         <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-6 space-y-6">
           <LeagueSettingsForm initialSettings={leagueSettings} />
@@ -301,7 +309,7 @@ export default function Home() {
   if (page === 'mail') {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col">
-        <Header />
+        <Header onMailClick={() => setPage('mail')} />
 
         <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
           <button onClick={() => setPage(currentUser.role === 'player' ? 'player' : 'admin')} className="btn-secondary mb-6">

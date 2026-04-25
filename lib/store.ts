@@ -167,34 +167,47 @@ const useAppStore = create<Store>((set, get) => ({
 
       const months = state.months.map(m => {
         if (m.id === monthId && !m.playDays.some(pd => state.currentDate >= m.deadlineDate)) {
-          return {
-            ...m,
-            playDays: m.playDays.map(pd => {
-              if (pd.id === playDayId) {
-                const isJoined = pd.playersJoined.includes(userId)
-                const newPlayersJoined = isJoined
-                  ? pd.playersJoined.filter(id => id !== userId)
-                  : [...pd.playersJoined, userId]
+          const updatedPlayDays = m.playDays.map(pd => {
+            if (pd.id === playDayId) {
+              const isJoined = pd.playersJoined.includes(userId)
+              const newPlayersJoined = isJoined
+                ? pd.playersJoined.filter(id => id !== userId)
+                : [...pd.playersJoined, userId]
 
-                const courtsRequired = calculateCourtsRequired(
-                  newPlayersJoined.length,
-                  state.leagueSettings.playersPerCourt,
-                )
+              const courtsRequired = calculateCourtsRequired(
+                newPlayersJoined.length,
+                state.leagueSettings.playersPerCourt,
+              )
 
-                return {
-                  ...pd,
-                  playersJoined: newPlayersJoined,
-                  courtsRequired,
-                }
-              }
               return {
                 ...pd,
-                courtsRequired: calculateCourtsRequired(
-                  pd.playersJoined.length,
-                  state.leagueSettings.playersPerCourt,
-                ),
+                playersJoined: newPlayersJoined,
+                courtsRequired,
               }
-            }),
+            }
+            return {
+              ...pd,
+              courtsRequired: calculateCourtsRequired(
+                pd.playersJoined.length,
+                state.leagueSettings.playersPerCourt,
+              ),
+            }
+          })
+
+          // Calculate new games count and update cost
+          const gamesJoined = updatedPlayDays.filter(pd => pd.playersJoined.includes(userId)).length
+          const newCost = 20 + (gamesJoined * 5)
+
+          const playerStatus = new Map(m.playerStatus)
+          const currentPayment = playerStatus.get(userId)
+          if (currentPayment) {
+            playerStatus.set(userId, { ...currentPayment, costAmount: newCost })
+          }
+
+          return {
+            ...m,
+            playDays: updatedPlayDays,
+            playerStatus,
           }
         }
         return m

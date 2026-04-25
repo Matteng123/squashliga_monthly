@@ -4,6 +4,7 @@ import { PlayDay } from '@/lib/types'
 import { formatDate } from '@/lib/dateUtils'
 import useAppStore from '@/lib/store'
 import { Users } from 'lucide-react'
+import { useState } from 'react'
 
 interface Props {
   playDay: PlayDay
@@ -22,7 +23,14 @@ export default function PlayDayCard({
   isMonthCommitted,
   onToggle,
 }: Props) {
+  const [isLoading, setIsLoading] = useState(false)
   const isDisabled = isLocked || isMonthCommitted
+
+  const handleToggle = () => {
+    setIsLoading(true)
+    onToggle()
+    setTimeout(() => setIsLoading(false), 300)
+  }
 
   return (
     <div className="card flex items-start justify-between gap-4">
@@ -46,15 +54,16 @@ export default function PlayDayCard({
       </div>
 
       <button
-        onClick={onToggle}
-        disabled={isDisabled}
-        className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex-shrink-0 whitespace-nowrap ${
+        onClick={handleToggle}
+        disabled={isDisabled || isLoading}
+        className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex-shrink-0 whitespace-nowrap flex items-center gap-2 ${
           isPlayerJoined
             ? 'bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50'
             : 'bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50'
-        } ${isDisabled ? 'cursor-not-allowed opacity-50' : ''}`}
+        } ${isDisabled || isLoading ? 'cursor-not-allowed opacity-50' : ''}`}
       >
-        {isPlayerJoined ? '✓ Joined' : '+ Join'}
+        {isLoading && <span className="inline-block animate-spin">⟳</span>}
+        {!isLoading && (isPlayerJoined ? '✓ Joined' : '+ Join')}
       </button>
     </div>
   )

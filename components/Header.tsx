@@ -1,21 +1,21 @@
 'use client'
 
 import useAppStore from '@/lib/store'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { formatDate } from '@/lib/dateUtils'
 import { Mail } from 'lucide-react'
 
-export default function Header() {
+interface HeaderProps {
+  onMailClick?: () => void
+}
+
+export default function Header({ onMailClick }: HeaderProps) {
   const currentUser = useAppStore(s => s.currentUser)
   const currentDate = useAppStore(s => s.currentDate)
   const mailCount = useAppStore(s => s.recentMail.length)
   const setCurrentUser = useAppStore(s => s.setCurrentUser)
-  const router = useRouter()
 
   const handleLogout = () => {
     setCurrentUser(null)
-    router.push('/')
   }
 
   if (!currentUser) return null
@@ -25,9 +25,9 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between gap-4 mb-3">
           <div className="flex items-center gap-4">
-            <Link href={currentUser.role === 'player' ? '/player' : '/admin'} className="text-lg font-bold">
+            <button onClick={() => setCurrentUser(null)} className="text-lg font-bold hover:opacity-80">
               🏸 Squash League
-            </Link>
+            </button>
             <div className="text-sm text-slate-400">
               {currentUser.name} <span className="text-slate-500">({currentUser.role})</span>
             </div>
@@ -38,8 +38,8 @@ export default function Header() {
               <div>Today: {formatDate(currentDate)}</div>
             </div>
 
-            <Link
-              href="/mail"
+            <button
+              onClick={onMailClick}
               className="relative p-2 hover:bg-slate-700 rounded-lg transition-colors"
               title="Mail Center"
             >
@@ -49,7 +49,7 @@ export default function Header() {
                   {mailCount}
                 </span>
               )}
-            </Link>
+            </button>
 
             <button
               onClick={handleLogout}

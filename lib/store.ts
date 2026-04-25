@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { subscribeWithSelector } from 'zustand/middleware'
 import { AppState, User, LeagueSettings, Month, PlayDay, Mail } from './types'
 import { generateMonthsFrom, formatDate } from './dateUtils'
 import { calculateCourtsRequired } from './courtUtils'
@@ -7,8 +6,7 @@ import { MOCK_USERS, DEFAULT_LEAGUE_SETTINGS } from './mockData'
 import { checkAndGenerateEmails } from './emailLogic'
 
 interface Store extends AppState {
-  // Computed
-  currentUser: User | null
+  // Computed (store in state, not getter)
   currentMonth: Month | null
   nextMonth: Month | null
   monthDeadlinePassed: boolean
@@ -25,184 +23,220 @@ interface Store extends AppState {
   switchRole: () => void
   updateMonth: (monthId: string, playDays: PlayDay[]) => void
   markMailAsRead: (mailId: string) => void
+  _computeCurrentMonth: () => void
+  _computeNextMonth: () => void
+  _computeRecentMail: () => void
 }
 
-const useAppStore = create<Store>()(
-  subscribeWithSelector((set, get) => ({
-    // Initial state
-    users: MOCK_USERS,
-    currentDate: new Date(2026, 4, 1),
-    leagueSettings: DEFAULT_LEAGUE_SETTINGS,
-    months: [],
-    mail: [],
-    currentUserId: null,
-    emailsSentThisMonth: {},
+const computeCurrentMonth = (months: Month[], currentDate: Date) => {
+  return months.find(
+    m => m.year === currentDate.getFullYear() && m.month === currentDate.getMonth(),
+  ) || null
+}
 
-    // Computed properties
-    get currentUser() {
-      const { users, currentUserId } = get()
-      return currentUserId ? users.find(u => u.id === currentUserId) || null : null
-    },
+const computeNextMonth = (months: Month[], currentDate: Date) => {
+  const nextDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1)
+  return months.find(m => m.year === nextDate.getFullYear() && m.month === nextDate.getMonth()) ||
+    null
+}
 
-    get currentMonth() {
-      const { months, currentDate } = get()
-      return months.find(
-        m => m.year === currentDate.getFullYear() && m.month === currentDate.getMonth(),
-      ) || null
-    },
+const computeRecentMail = (mail: Mail[]) => {
+  const threeMonthsAgo = new Date()
+  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+  return mail.filter(m => m.timestamp >= threeMonthsAgo).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+}
 
-    get nextMonth() {
-      const { months, currentDate } = get()
-      const nextDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1)
-      return months.find(m => m.year === nextDate.getFullYear() && m.month === nextDate.getMonth()) ||
-        null
-    },
+const useAppStore = create<Store>((set, get) => ({
+  // Initial state
+  users: MOCK_USERS,
+  currentDate: new Date(2026, 4, 1),
+  leagueSettings: DEFAULT_LEAGUE_SETTINGS,
+  months: [],
+  mail: [],
+  currentUserId: null,
+  currentUser: null,
+  emailsSentThisMonth: {},
+  currentMonth: null,
+  nextMonth: null,
+  monthDeadlinePassed: false,
+  recentMail: [],
 
-    get monthDeadlinePassed() {
-      const { currentDate, currentMonth } = get()
-      return currentMonth ? currentDate >= currentMonth.deadlineDate : false
-    },
+  _computeCurrentMonth: () => {
+    set(state => {
+      const cm = computeCurrentMonth(state.months, state.currentDate)
+      return { currentMonth: cm, monthDeadlinePassed: cm ? state.currentDate >= cm.deadlineDate : false }
+    })
+  },
 
-    get recentMail() {
-      const { mail } = get()
-      const threeMonthsAgo = new Date()
-      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
-      return mail.filter(m => m.timestamp >= threeMonthsAgo).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-    },
+  _computeNextMonth: () => {
+    set(state => {
+      const nm = computeNextMonth(state.months, state.currentDate)
+      return { nextMonth: nm }
+    })
+  },
 
-    initApp: () => {
-      set(state => {
-        const months = generateMonthsFrom(state.currentDate, 4, state.leagueSettings)
-        return { months }
-      })
-    },
+  _computeRecentMail: () => {
+    set(state => ({
+      recentMail: computeRecentMail(state.mail)
+    }))
+  },
 
-    setCurrentDate: (date: Date) => {
-      set(state => {
-        const newState = { currentDate: date }
-        const months = state.months
-
-        if (!months.some(m => m.year === date.getFullYear() && m.month === date.getMonth())) {
-          months.push(...generateMonthsFrom(date, 2, state.leagueSettings))
-        }
-
-        return { ...newState, months: months.sort((a, b) => a.deadlineDate.getTime() - b.deadlineDate.getTime()) }
-      })
-
-      const updatedState = get()
-      const newEmails = checkAndGenerateEmails(
-        date,
-        updatedState.currentMonth || undefined,
-        updatedState.nextMonth || undefined,
-        updatedState.users,
-        updatedState.mail,
-      )
-
-      if (newEmails.length > 0) {
-        set(state => ({
-          mail: [...state.mail, ...newEmails],
-        }))
+  initApp: () => {
+    set(state => {
+      const months = generateMonthsFrom(state.currentDate, 4, state.leagueSettings)
+      const cm = computeCurrentMonth(months, state.currentDate)
+      const nm = computeNextMonth(months, state.currentDate)
+      return {
+        months,
+        currentMonth: cm,
+        nextMonth: nm,
+        monthDeadlinePassed: cm ? state.currentDate >= cm.deadlineDate : false,
       }
-    },
+    })
+  },
 
-    setCurrentUser: (userId: string | null) => {
-      set({ currentUserId: userId })
-    },
+  setCurrentDate: (date: Date) => {
+    set(state => {
+      let months = state.months
 
-    updateLeagueSettings: (settings: LeagueSettings) => {
-      set(state => {
-        const currentDate = state.currentDate
-        const newMonths = generateMonthsFrom(currentDate, 4, settings)
+      if (!months.some(m => m.year === date.getFullYear() && m.month === date.getMonth())) {
+        months = [...months, ...generateMonthsFrom(date, 2, state.leagueSettings)].sort((a, b) => a.deadlineDate.getTime() - b.deadlineDate.getTime())
+      }
 
-        return {
-          leagueSettings: settings,
-          months: newMonths,
-        }
-      })
-    },
+      const cm = computeCurrentMonth(months, date)
+      const nm = computeNextMonth(months, date)
+      return {
+        currentDate: date,
+        months,
+        currentMonth: cm,
+        nextMonth: nm,
+        monthDeadlinePassed: cm ? date >= cm.deadlineDate : false,
+      }
+    })
 
-    togglePlayDay: (monthId: string, playDayId: string) => {
-      set(state => {
-        const userId = state.currentUserId
-        if (!userId) return state
+    const updatedState = get()
+    const newEmails = checkAndGenerateEmails(
+      date,
+      updatedState.currentMonth || undefined,
+      updatedState.nextMonth || undefined,
+      updatedState.users,
+      updatedState.mail,
+    )
 
-        const months = state.months.map(m => {
-          if (m.id === monthId && !m.playDays.some(pd => state.currentDate >= m.deadlineDate)) {
-            return {
-              ...m,
-              playDays: m.playDays.map(pd => {
-                if (pd.id === playDayId) {
-                  const isJoined = pd.playersJoined.includes(userId)
-                  const newPlayersJoined = isJoined
-                    ? pd.playersJoined.filter(id => id !== userId)
-                    : [...pd.playersJoined, userId]
+    if (newEmails.length > 0) {
+      set(state => ({
+        mail: [...state.mail, ...newEmails],
+      }))
+      get()._computeRecentMail()
+    }
+  },
 
-                  const courtsRequired = calculateCourtsRequired(
-                    newPlayersJoined.length,
-                    state.leagueSettings.playersPerCourt,
-                  )
+  setCurrentUser: (userId: string | null) => {
+    set(state => {
+      const user = userId ? state.users.find(u => u.id === userId) || null : null
+      return { currentUserId: userId, currentUser: user }
+    })
+  },
 
-                  return {
-                    ...pd,
-                    playersJoined: newPlayersJoined,
-                    courtsRequired,
-                  }
-                }
+  updateLeagueSettings: (settings: LeagueSettings) => {
+    set(state => {
+      const currentDate = state.currentDate
+      const newMonths = generateMonthsFrom(currentDate, 4, settings)
+      const cm = computeCurrentMonth(newMonths, currentDate)
+      const nm = computeNextMonth(newMonths, currentDate)
+
+      return {
+        leagueSettings: settings,
+        months: newMonths,
+        currentMonth: cm,
+        nextMonth: nm,
+        monthDeadlinePassed: cm ? currentDate >= cm.deadlineDate : false,
+      }
+    })
+  },
+
+  togglePlayDay: (monthId: string, playDayId: string) => {
+    set(state => {
+      const userId = state.currentUserId
+      if (!userId) return state
+
+      const months = state.months.map(m => {
+        if (m.id === monthId && !m.playDays.some(pd => state.currentDate >= m.deadlineDate)) {
+          return {
+            ...m,
+            playDays: m.playDays.map(pd => {
+              if (pd.id === playDayId) {
+                const isJoined = pd.playersJoined.includes(userId)
+                const newPlayersJoined = isJoined
+                  ? pd.playersJoined.filter(id => id !== userId)
+                  : [...pd.playersJoined, userId]
+
+                const courtsRequired = calculateCourtsRequired(
+                  newPlayersJoined.length,
+                  state.leagueSettings.playersPerCourt,
+                )
+
                 return {
                   ...pd,
-                  courtsRequired: calculateCourtsRequired(
-                    pd.playersJoined.length,
-                    state.leagueSettings.playersPerCourt,
-                  ),
+                  playersJoined: newPlayersJoined,
+                  courtsRequired,
                 }
-              }),
-            }
+              }
+              return {
+                ...pd,
+                courtsRequired: calculateCourtsRequired(
+                  pd.playersJoined.length,
+                  state.leagueSettings.playersPerCourt,
+                ),
+              }
+            }),
           }
-          return m
-        })
-
-        return { months }
+        }
+        return m
       })
-    },
 
-    updateMonth: (monthId: string, playDays: PlayDay[]) => {
-      set(state => ({
-        months: state.months.map(m => (m.id === monthId ? { ...m, playDays } : m)),
-      }))
-    },
+      return { months }
+    })
+  },
 
-    jumpToDeadline: () => {
-      const { currentMonth } = get()
-      if (currentMonth) {
-        get().setCurrentDate(currentMonth.deadlineDate)
-      }
-    },
+  updateMonth: (monthId: string, playDays: PlayDay[]) => {
+    set(state => ({
+      months: state.months.map(m => (m.id === monthId ? { ...m, playDays } : m)),
+    }))
+  },
 
-    jumpToReminderDay: () => {
-      const { nextMonth } = get()
-      if (nextMonth) {
-        get().setCurrentDate(nextMonth.reminderDate)
-      }
-    },
+  jumpToDeadline: () => {
+    const { currentMonth } = get()
+    if (currentMonth) {
+      get().setCurrentDate(currentMonth.deadlineDate)
+    }
+  },
 
-    switchRole: () => {
-      const { currentUser, users } = get()
-      if (!currentUser) return
+  jumpToReminderDay: () => {
+    const { nextMonth } = get()
+    if (nextMonth) {
+      get().setCurrentDate(nextMonth.reminderDate)
+    }
+  },
 
-      const nextRole = currentUser.role === 'player' ? 'admin' : 'player'
-      const nextUser = users.find(u => u.role === nextRole)
+  switchRole: () => {
+    const { currentUser, users } = get()
+    if (!currentUser) return
 
-      if (nextUser) {
-        get().setCurrentUser(nextUser.id)
-      }
-    },
+    const nextRole = currentUser.role === 'player' ? 'admin' : 'player'
+    const nextUser = users.find(u => u.role === nextRole)
 
-    markMailAsRead: (mailId: string) => {
-      set(state => ({
-        mail: state.mail.filter(m => m.id !== mailId),
-      }))
-    },
-  })),
-)
+    if (nextUser) {
+      get().setCurrentUser(nextUser.id)
+    }
+  },
+
+  markMailAsRead: (mailId: string) => {
+    set(state => ({
+      mail: state.mail.filter(m => m.id !== mailId),
+    }))
+    get()._computeRecentMail()
+  },
+}))
 
 export default useAppStore

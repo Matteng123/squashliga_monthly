@@ -54,5 +54,6 @@ export interface AppState {
   months: Month[]
   mail: Mail[]
   currentUserId: string | null
+  currentUser: User | null
   emailsSentThisMonth: { [key: string]: boolean }
 }

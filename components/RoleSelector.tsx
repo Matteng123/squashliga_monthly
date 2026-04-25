@@ -9,13 +9,16 @@ export default function RoleSelector() {
   const router = useRouter()
 
   const handleSelectRole = (userId: string) => {
-    setCurrentUser(userId)
     const user = users.find(u => u.id === userId)
-    if (user?.role === 'player') {
-      router.push('/player')
-    } else {
-      router.push('/admin')
-    }
+    setCurrentUser(userId)
+
+    setTimeout(() => {
+      if (user?.role === 'player') {
+        router.push('/player')
+      } else {
+        router.push('/admin')
+      }
+    }, 50)
   }
 
   const players = users.filter(u => u.role === 'player')

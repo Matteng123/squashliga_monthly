@@ -2,7 +2,9 @@ export type Role = 'player' | 'admin'
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday'
 export type PlayDayStatus = 'open' | 'locked'
 export type MonthStatus = 'active' | 'archived'
-export type EmailType = 'reminder' | 'admin_summary' | 'booking'
+export type EmailType = 'reminder' | 'admin_summary' | 'booking' | 'payment_reminder' | 'payment_confirmation'
+export type PaymentMethod = 'bank_transfer' | 'cash' | 'card'
+export type MonthPlayerStatus = 'editing' | 'committed' | 'self_paid' | 'confirmed'
 
 export interface User {
   id: string
@@ -27,14 +29,25 @@ export interface PlayDay {
   courtsRequired: number
 }
 
+export interface PlayerMonthPayment {
+  playerId: string
+  status: MonthPlayerStatus
+  costAmount: number
+  paymentMethod?: PaymentMethod
+  paymentRecordedAt?: Date
+  paymentConfirmedAt?: Date
+}
+
 export interface Month {
   id: string
   year: number
   month: number
   playDays: PlayDay[]
+  playerStatus: Map<string, PlayerMonthPayment>
   status: MonthStatus
   deadlineDate: Date
   reminderDate: Date
+  commitmentDeadline: Date
 }
 
 export interface Mail {

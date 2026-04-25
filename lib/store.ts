@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { AppState, User, LeagueSettings, Month, PlayDay, Mail } from './types'
-import { generateMonthsFrom, formatDate } from './dateUtils'
+import { AppState, User, LeagueSettings, Month, PlayDay, Mail, PaymentMethod, MonthPlayerStatus } from './types'
+import { generateMonthsFrom, formatDate, formatMonth } from './dateUtils'
 import { calculateCourtsRequired } from './courtUtils'
 import { MOCK_USERS, DEFAULT_LEAGUE_SETTINGS } from './mockData'
 import { checkAndGenerateEmails } from './emailLogic'
@@ -23,6 +23,11 @@ interface Store extends AppState {
   switchRole: () => void
   updateMonth: (monthId: string, playDays: PlayDay[]) => void
   markMailAsRead: (mailId: string) => void
+  commitMonth: (monthId: string, userId: string) => void
+  setPaymentMethod: (monthId: string, userId: string, method: PaymentMethod) => void
+  recordPayment: (monthId: string, userId: string) => void
+  markPaymentConfirmed: (monthId: string, userId: string) => void
+  autoCommitUnfinishedMonths: (monthId: string) => void
   _computeCurrentMonth: () => void
   _computeNextMonth: () => void
   _computeRecentMail: () => void
@@ -83,7 +88,7 @@ const useAppStore = create<Store>((set, get) => ({
 
   initApp: () => {
     set(state => {
-      const months = generateMonthsFrom(state.currentDate, 4, state.leagueSettings)
+      const months = generateMonthsFrom(state.currentDate, 4, state.leagueSettings, state.users)
       const cm = computeCurrentMonth(months, state.currentDate)
       const nm = computeNextMonth(months, state.currentDate)
       return {
@@ -100,7 +105,7 @@ const useAppStore = create<Store>((set, get) => ({
       let months = state.months
 
       if (!months.some(m => m.year === date.getFullYear() && m.month === date.getMonth())) {
-        months = [...months, ...generateMonthsFrom(date, 2, state.leagueSettings)].sort((a, b) => a.deadlineDate.getTime() - b.deadlineDate.getTime())
+        months = [...months, ...generateMonthsFrom(date, 2, state.leagueSettings, state.users)].sort((a, b) => a.deadlineDate.getTime() - b.deadlineDate.getTime())
       }
 
       const cm = computeCurrentMonth(months, date)
@@ -141,7 +146,7 @@ const useAppStore = create<Store>((set, get) => ({
   updateLeagueSettings: (settings: LeagueSettings) => {
     set(state => {
       const currentDate = state.currentDate
-      const newMonths = generateMonthsFrom(currentDate, 4, settings)
+      const newMonths = generateMonthsFrom(currentDate, 4, settings, state.users)
       const cm = computeCurrentMonth(newMonths, currentDate)
       const nm = computeNextMonth(newMonths, currentDate)
 
@@ -236,6 +241,113 @@ const useAppStore = create<Store>((set, get) => ({
       mail: state.mail.filter(m => m.id !== mailId),
     }))
     get()._computeRecentMail()
+  },
+
+  commitMonth: (monthId: string, userId: string) => {
+    set(state => {
+      const months = state.months.map(m => {
+        if (m.id === monthId) {
+          const playerStatus = new Map(m.playerStatus)
+          const currentPayment = playerStatus.get(userId)
+          if (currentPayment) {
+            playerStatus.set(userId, { ...currentPayment, status: 'committed' })
+          }
+          return { ...m, playerStatus }
+        }
+        return m
+      })
+      return { months }
+    })
+  },
+
+  setPaymentMethod: (monthId: string, userId: string, method: PaymentMethod) => {
+    set(state => {
+      const months = state.months.map(m => {
+        if (m.id === monthId) {
+          const playerStatus = new Map(m.playerStatus)
+          const currentPayment = playerStatus.get(userId)
+          if (currentPayment) {
+            playerStatus.set(userId, { ...currentPayment, paymentMethod: method, status: 'committed' })
+          }
+          return { ...m, playerStatus }
+        }
+        return m
+      })
+      return { months }
+    })
+  },
+
+  recordPayment: (monthId: string, userId: string) => {
+    set(state => {
+      const months = state.months.map(m => {
+        if (m.id === monthId) {
+          const playerStatus = new Map(m.playerStatus)
+          const currentPayment = playerStatus.get(userId)
+          if (currentPayment) {
+            playerStatus.set(userId, { ...currentPayment, status: 'self_paid', paymentRecordedAt: new Date() })
+          }
+          return { ...m, playerStatus }
+        }
+        return m
+      })
+      return { months }
+    })
+  },
+
+  markPaymentConfirmed: (monthId: string, userId: string) => {
+    set(state => {
+      const months = state.months.map(m => {
+        if (m.id === monthId) {
+          const playerStatus = new Map(m.playerStatus)
+          const currentPayment = playerStatus.get(userId)
+          if (currentPayment) {
+            playerStatus.set(userId, { ...currentPayment, status: 'confirmed', paymentConfirmedAt: new Date() })
+          }
+          return { ...m, playerStatus }
+        }
+        return m
+      })
+
+      const updatedMonth = months.find(m => m.id === monthId)
+      const player = state.users.find(u => u.id === userId)
+      if (updatedMonth && player) {
+        const paymentStatus = updatedMonth.playerStatus.get(userId)
+        if (paymentStatus) {
+          const confirmationEmail: Mail = {
+            id: `payment-confirmation-${monthId}-${userId}`,
+            timestamp: new Date(),
+            recipient: userId,
+            subject: `Payment confirmed for ${formatMonth(updatedMonth.year, updatedMonth.month)}`,
+            content: `Hi ${player.name},\n\nWe have received your payment of €${paymentStatus.costAmount}.\n\nThank you for your participation in the Squash League!\n\nBest regards,\nSquash League`,
+            type: 'payment_confirmation',
+            monthId,
+          }
+
+          return { months, mail: [...state.mail, confirmationEmail] }
+        }
+      }
+
+      return { months }
+    })
+    get()._computeRecentMail()
+  },
+
+  autoCommitUnfinishedMonths: (monthId: string) => {
+    set(state => {
+      const months = state.months.map(m => {
+        if (m.id === monthId) {
+          const playerStatus = new Map(m.playerStatus)
+          playerStatus.forEach((payment, playerId) => {
+            if (payment.status === 'editing') {
+              playerStatus.set(playerId, { ...payment, status: 'committed' })
+            }
+          })
+          return { ...m, playerStatus }
+        }
+        return m
+      })
+      return { months }
+    })
   },
 }))
 

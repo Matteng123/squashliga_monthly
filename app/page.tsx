@@ -6,11 +6,14 @@ import RoleSelector from '@/components/RoleSelector'
 import Header from '@/components/Header'
 import MonthSelector from '@/components/MonthSelector'
 import PlayDayCard from '@/components/PlayDayCard'
-import CostSummary from '@/components/CostSummary'
+import PaymentSummary from '@/components/PaymentSummary'
+import PaymentMethodSelector from '@/components/PaymentMethodSelector'
+import PaymentStatusTable from '@/components/PaymentStatusTable'
 import LeagueSettingsForm from '@/components/LeagueSettingsForm'
 import AdminSummaryCard from '@/components/AdminSummaryCard'
 import TimeSimControls from '@/components/TimeSimControls'
 import MailCenter from '@/components/MailCenter'
+import { PaymentMethod, MonthPlayerStatus } from '@/lib/types'
 
 export default function Home() {
   const currentUser = useAppStore(s => s.currentUser)
@@ -23,8 +26,14 @@ export default function Home() {
   const leagueSettings = useAppStore(s => s.leagueSettings)
   const togglePlayDay = useAppStore(s => s.togglePlayDay)
   const initApp = useAppStore(s => s.initApp)
+  const commitMonth = useAppStore(s => s.commitMonth)
+  const setPaymentMethod = useAppStore(s => s.setPaymentMethod)
+  const recordPayment = useAppStore(s => s.recordPayment)
+  const markPaymentConfirmed = useAppStore(s => s.markPaymentConfirmed)
+  const autoCommitUnfinishedMonths = useAppStore(s => s.autoCommitUnfinishedMonths)
   const [selectedMonth, setSelectedMonth] = useState<any>(null)
   const [page, setPage] = useState<'role' | 'player' | 'admin' | 'mail'>('role')
+  const [showPaymentMethodSelector, setShowPaymentMethodSelector] = useState(false)
 
 
   useEffect(() => {
@@ -50,6 +59,15 @@ export default function Home() {
       setSelectedMonth(currentMonth)
     }
   }, [currentMonth, selectedMonth])
+
+  useEffect(() => {
+    if (selectedMonth && currentDate >= selectedMonth.deadlineDate) {
+      const playerPaymentStatus = selectedMonth.playerStatus.get(currentUserId || '')
+      if (playerPaymentStatus?.status === 'editing') {
+        autoCommitUnfinishedMonths(selectedMonth.id)
+      }
+    }
+  }, [selectedMonth, currentDate, currentUserId, autoCommitUnfinishedMonths])
 
   if (!currentUserId || !currentUser) {
     return (
@@ -129,6 +147,9 @@ export default function Home() {
       pd.playersJoined.includes(currentUser.id),
     ).length
     const isMonthLocked = currentDate >= selectedMonth.deadlineDate
+    const playerPaymentStatus = selectedMonth.playerStatus.get(currentUser.id)
+    const paymentStatus: MonthPlayerStatus = playerPaymentStatus?.status || 'editing'
+    const costAmount = playerPaymentStatus?.costAmount || 20 + (gamesJoined * 5)
 
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col pb-40">
@@ -169,6 +190,7 @@ export default function Home() {
                   monthId={selectedMonth.id}
                   isPlayerJoined={playDay.playersJoined.includes(currentUser.id)}
                   isLocked={isMonthLocked}
+                  isMonthCommitted={paymentStatus !== 'editing'}
                   onToggle={() => togglePlayDay(selectedMonth.id, playDay.id)}
                 />
               ))
@@ -190,7 +212,23 @@ export default function Home() {
           </button>
         </main>
 
-        <CostSummary gamesJoined={gamesJoined} />
+        <PaymentSummary
+          gamesJoined={gamesJoined}
+          status={paymentStatus}
+          costAmount={costAmount}
+          onCommitMonth={() => commitMonth(selectedMonth.id, currentUser.id)}
+          onSelectPaymentMethod={() => setShowPaymentMethodSelector(true)}
+        />
+
+        <PaymentMethodSelector
+          isOpen={showPaymentMethodSelector}
+          onClose={() => setShowPaymentMethodSelector(false)}
+          onConfirm={(method: PaymentMethod) => {
+            setPaymentMethod(selectedMonth.id, currentUser.id, method)
+            setShowPaymentMethodSelector(false)
+          }}
+          selectedMethod={playerPaymentStatus?.paymentMethod}
+        />
       </div>
     )
   }
@@ -202,7 +240,7 @@ export default function Home() {
       <div className="min-h-screen bg-slate-900 flex flex-col">
         <Header />
 
-        <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6 space-y-6">
+        <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-6 space-y-6">
           <LeagueSettingsForm initialSettings={leagueSettings} />
 
           <div className="divider" />
@@ -229,6 +267,21 @@ export default function Home() {
                 📬 Mail Center
               </button>
             </div>
+          </div>
+
+          <div className="divider" />
+
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold text-white">Payment Status</h2>
+            {currentMonth && (
+              <PaymentStatusTable
+                month={currentMonth}
+                users={users}
+                onMarkConfirmed={(userId: string) => {
+                  markPaymentConfirmed(currentMonth.id, userId)
+                }}
+              />
+            )}
           </div>
 
           <div className="card bg-slate-700/50 border-slate-600">

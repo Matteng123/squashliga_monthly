@@ -33,7 +33,7 @@ export function getLastDayOfMonth(year: number, month: number): number {
   return new Date(year, month + 1, 0).getDate()
 }
 
-export function generateMonthsFrom(startDate: Date, count: number, settings: LeagueSettings): Month[] {
+export function generateMonthsFrom(startDate: Date, count: number, settings: LeagueSettings, users: any[] = []): Month[] {
   const months: Month[] = []
   const startYear = startDate.getFullYear()
   const startMonth = startDate.getMonth()
@@ -46,15 +46,27 @@ export function generateMonthsFrom(startDate: Date, count: number, settings: Lea
     const playDays = generatePlayDaysForMonth(year, month, settings)
     const deadlineDate = new Date(year, month, settings.monthlyDeadline)
     const reminderDate = new Date(year, month, settings.reminderDay)
+    const commitmentDeadline = new Date(year, month, settings.monthlyDeadline + 2)
+
+    const playerStatus = new Map()
+    users.forEach(user => {
+      playerStatus.set(user.id, {
+        playerId: user.id,
+        status: 'editing',
+        costAmount: 20,
+      })
+    })
 
     months.push({
       id: monthId,
       year,
       month,
       playDays,
+      playerStatus,
       status: 'active',
       deadlineDate,
       reminderDate,
+      commitmentDeadline,
     })
   }
 

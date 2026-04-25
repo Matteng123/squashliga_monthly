@@ -129,6 +129,44 @@ export function generateBookingEmails(
   return newMails
 }
 
+export function generatePaymentReminders(
+  currentDate: Date,
+  currentMonth: Month | undefined,
+  users: User[],
+  existingMail: Mail[],
+): Mail[] {
+  const newMails: Mail[] = []
+
+  if (!currentMonth) return newMails
+
+  if (!isDeadlinePassed(currentDate, currentMonth.deadlineDate)) return newMails
+
+  const players = users.filter(u => u.role === 'player')
+
+  for (const player of players) {
+    const paymentStatus = currentMonth.playerStatus.get(player.id)
+    if (!paymentStatus || paymentStatus.status !== 'committed') continue
+
+    const paymentReminderKey = `payment-reminder-${currentMonth.id}-${player.id}`
+    if (existingMail.some(m => m.id === paymentReminderKey)) continue
+
+    newMails.push({
+      id: paymentReminderKey,
+      timestamp: currentDate,
+      recipient: player.id,
+      subject: `Payment due for ${formatMonth(currentMonth.year, currentMonth.month)}`,
+      content: `Hi ${player.name},\n\nYou have committed to pay €${paymentStatus.costAmount} for ${formatMonth(
+        currentMonth.year,
+        currentMonth.month,
+      )}.\n\nPlease record your payment in the app now.\n\nBest regards,\nSquash League`,
+      type: 'payment_reminder',
+      monthId: currentMonth.id,
+    })
+  }
+
+  return newMails
+}
+
 export function checkAndGenerateEmails(
   currentDate: Date,
   currentMonth: Month | undefined,
@@ -141,6 +179,7 @@ export function checkAndGenerateEmails(
   newMails.push(...generateReminders(currentDate, nextMonth, users, existingMail))
   newMails.push(...generateAdminSummaries(currentDate, currentMonth, existingMail))
   newMails.push(...generateBookingEmails(currentDate, currentMonth, existingMail))
+  newMails.push(...generatePaymentReminders(currentDate, currentMonth, users, existingMail))
 
   return newMails
 }

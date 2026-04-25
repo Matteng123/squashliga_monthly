@@ -10,6 +10,7 @@ interface Props {
   monthId: string
   isPlayerJoined: boolean
   isLocked: boolean
+  isMonthCommitted?: boolean
   onToggle: () => void
 }
 
@@ -18,8 +19,11 @@ export default function PlayDayCard({
   monthId,
   isPlayerJoined,
   isLocked,
+  isMonthCommitted,
   onToggle,
 }: Props) {
+  const isDisabled = isLocked || isMonthCommitted
+
   return (
     <div className="card flex items-start justify-between gap-4">
       <div className="flex-1">
@@ -43,12 +47,12 @@ export default function PlayDayCard({
 
       <button
         onClick={onToggle}
-        disabled={isLocked}
+        disabled={isDisabled}
         className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors flex-shrink-0 whitespace-nowrap ${
           isPlayerJoined
             ? 'bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50'
             : 'bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50'
-        } ${isLocked ? 'cursor-not-allowed opacity-50' : ''}`}
+        } ${isDisabled ? 'cursor-not-allowed opacity-50' : ''}`}
       >
         {isPlayerJoined ? '✓ Joined' : '+ Join'}
       </button>

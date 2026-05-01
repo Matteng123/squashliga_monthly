@@ -17,7 +17,7 @@ interface Props {
 }
 
 export default function AdminSummaryCard({ month, isCurrentMonth, isDeadlinePassed, onCompleteMonth, users, onMarkConfirmed }: Props) {
-  const [showPaymentStatus, setShowPaymentStatus] = useState(false)
+  const [showPaymentStatus, setShowPaymentStatus] = useState(isCurrentMonth)
   const uniquePlayers = new Set(month.playDays.flatMap(pd => pd.playersJoined)).size
   const totalSlots = month.playDays.reduce((sum, pd) => sum + pd.playersJoined.length, 0)
 

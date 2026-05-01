@@ -1,4 +1,4 @@
-import { Mail, Month, User } from './types'
+import { Mail, Month, User, LeagueSettings } from './types'
 import { isReminderDay, isDeadlinePassed, formatDate, formatMonth } from './dateUtils'
 import { calculateCourtsRequired } from './courtUtils'
 
@@ -165,6 +165,110 @@ export function generatePaymentReminders(
   }
 
   return newMails
+}
+
+export function generatePaymentSubmittedReceipt(
+  currentDate: Date,
+  month: Month,
+  userId: string,
+  users: User[],
+): Mail | null {
+  const user = users.find(u => u.id === userId)
+  if (!user) return null
+
+  const paymentStatus = month.playerStatus.get(userId)
+  if (!paymentStatus || paymentStatus.status !== 'payment_submitted') return null
+
+  const methodLabel = paymentStatus.paymentMethod === 'bank_transfer' ? 'Banküberweisung' : 'PayPal'
+
+  let content = `Hallo ${user.name},\n\n`
+  content += `wir haben Ihre Zahlungsangabe erhalten:\n\n`
+  content += `Betrag: €${paymentStatus.costAmount}\n`
+  content += `Monat: ${formatMonth(month.year, month.month)}\n`
+  content += `Zahlungsart: ${methodLabel}\n\n`
+  content += `Ihre Zahlung wird derzeit geprüft. Sobald der Eingang vom Admin bestätigt wurde, erhalten Sie eine detaillierte Bestätigungsmail mit allen Buchungsdaten.\n\n`
+  content += `Mit freundlichen Grüßen,\nSquash League`
+
+  return {
+    id: `payment-receipt-${month.id}-${userId}`,
+    timestamp: currentDate,
+    recipient: userId,
+    subject: `Zahlungseingang erfasst – ${formatMonth(month.year, month.month)}`,
+    content,
+    type: 'payment_confirmation',
+    monthId: month.id,
+  }
+}
+
+export function generatePaymentConfirmationSummary(
+  currentDate: Date,
+  month: Month,
+  userId: string,
+  users: User[],
+  leagueSettings: LeagueSettings,
+): Mail | null {
+  const user = users.find(u => u.id === userId)
+  if (!user) {
+    console.log('❌ User nicht gefunden:', userId)
+    return null
+  }
+
+  const paymentStatus = month.playerStatus.get(userId)
+  console.log('📧 generatePaymentConfirmationSummary:', { userId, monthId: month.id, status: paymentStatus?.status })
+  if (!paymentStatus || paymentStatus.status !== 'confirmed') {
+    console.log('❌ Payment status nicht confirmed:', paymentStatus?.status)
+    return null
+  }
+
+  // Get the play days the user joined
+  const joinedPlayDays = month.playDays.filter(pd => pd.playersJoined.includes(userId))
+  const gamesCount = joinedPlayDays.length
+  const baseFee = gamesCount > 0 ? 20 : 0
+  const gamesFee = gamesCount * 5
+
+  let content = `Hallo ${user.name},\n\n`
+  content += `vielen Dank! Ihre Zahlung von €${paymentStatus.costAmount} für ${formatMonth(month.year, month.month)} wurde bestätigt.\n\n`
+
+  if (joinedPlayDays.length > 0) {
+    content += `=== GEBUCHTE SPIELTAGE ===\n`
+    for (const playDay of joinedPlayDays) {
+      content += `• ${formatDate(playDay.date)}\n`
+    }
+    content += `\n`
+  }
+
+  content += `=== KOSTENAUFSCHLÜSSELUNG ===\n`
+  if (baseFee > 0) {
+    content += `Basisgebühr: €${baseFee.toFixed(2)}\n`
+    content += `Spielgebühren: ${gamesCount} × €5,00 = €${gamesFee.toFixed(2)}\n`
+    content += `─────────────────────\n`
+  }
+  content += `Gesamtkosten: €${paymentStatus.costAmount.toFixed(2)}\n\n`
+
+  content += `=== ZAHLUNGSINFORMATIONEN ===\n`
+  content += `Zahlungsart: ${paymentStatus.paymentMethod === 'bank_transfer' ? 'Banküberweisung' : 'PayPal'}\n`
+  if (paymentStatus.paymentConfirmedAt) {
+    content += `Bestätigt am: ${formatDate(paymentStatus.paymentConfirmedAt)}\n`
+  }
+
+  if (paymentStatus.paymentMethod === 'bank_transfer') {
+    content += `\nKontoinhaber: ${leagueSettings.bankAccountName}\n`
+    content += `IBAN: ${leagueSettings.bankAccountIBAN}\n`
+  } else if (paymentStatus.paymentMethod === 'paypal') {
+    content += `\nPayPal Link: ${leagueSettings.paypalLink}\n`
+  }
+
+  content += `\nMit freundlichen Grüßen,\nSquash League`
+
+  return {
+    id: `payment-confirmation-${month.id}-${userId}`,
+    timestamp: currentDate,
+    recipient: userId,
+    subject: `Zahlung bestätigt – ${formatMonth(month.year, month.month)}`,
+    content,
+    type: 'payment_confirmation',
+    monthId: month.id,
+  }
 }
 
 export function checkAndGenerateEmails(

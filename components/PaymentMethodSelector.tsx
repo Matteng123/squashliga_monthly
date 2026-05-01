@@ -2,29 +2,29 @@
 
 import { useState } from 'react'
 import { PaymentMethod } from '@/lib/types'
+import { de } from '@/lib/i18n'
 
 interface Props {
   isOpen: boolean
   onClose: () => void
   onConfirm: (method: PaymentMethod) => void
   selectedMethod?: PaymentMethod
+  bankAccountName: string
+  bankAccountIBAN: string
+  paypalLink: string
+  costAmount: number
 }
 
 const methods: { value: PaymentMethod; label: string; description: string }[] = [
   {
     value: 'bank_transfer',
-    label: 'Bank Transfer',
-    description: 'Direct bank transfer',
+    label: de.payments.bankTransfer,
+    description: de.payments.bankTransferDesc,
   },
   {
-    value: 'cash',
-    label: 'Cash',
-    description: 'Payment in cash',
-  },
-  {
-    value: 'card',
-    label: 'Card',
-    description: 'Credit or debit card',
+    value: 'paypal',
+    label: de.payments.paypal,
+    description: de.payments.paypalDesc,
   },
 ]
 
@@ -33,16 +33,21 @@ export default function PaymentMethodSelector({
   onClose,
   onConfirm,
   selectedMethod,
+  bankAccountName,
+  bankAccountIBAN,
+  paypalLink,
+  costAmount,
 }: Props) {
   const [selected, setSelected] = useState<PaymentMethod | undefined>(selectedMethod)
+  const [showDetails, setShowDetails] = useState(false)
 
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
       <div className="card max-w-md w-full">
-        <h2 className="text-xl font-bold text-white mb-4">Select Payment Method</h2>
-        <p className="text-slate-300 text-sm mb-6">How would you like to pay?</p>
+        <h2 className="text-xl font-bold text-white mb-4">{de.payments.selectPaymentMethod}</h2>
+        <p className="text-slate-300 text-sm mb-6">{de.payments.choosePaymentMethod}</p>
 
         <div className="space-y-3 mb-6">
           {methods.map(method => (
@@ -66,12 +71,31 @@ export default function PaymentMethodSelector({
           ))}
         </div>
 
+        {selected === 'bank_transfer' && (
+          <div className="bg-slate-700/50 rounded p-3 mb-6 border border-slate-600 space-y-2 text-xs">
+            <p className="text-slate-400">{de.payments.transferInstructions}</p>
+            <div className="space-y-1">
+              <p className="text-slate-500">{de.payments.accountName}: <span className="text-white font-semibold">{bankAccountName}</span></p>
+              <p className="text-slate-500">{de.payments.iban}: <span className="text-emerald-400 font-mono break-all">{bankAccountIBAN}</span></p>
+              <p className="text-slate-500">Betrag: <span className="text-white font-semibold">€{costAmount.toFixed(2)}</span></p>
+            </div>
+          </div>
+        )}
+
+        {selected === 'paypal' && (
+          <div className="bg-slate-700/50 rounded p-3 mb-6 border border-slate-600 space-y-2 text-xs">
+            <p className="text-slate-400">{de.payments.paypalInstructions}</p>
+            <p className="text-slate-500">Betrag: <span className="text-white font-semibold">€{costAmount.toFixed(2)}</span></p>
+            <p className="text-slate-500 break-all">Link: <span className="text-blue-400">{paypalLink}</span></p>
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button
             onClick={onClose}
             className="btn-secondary flex-1"
           >
-            Cancel
+            {de.payments.cancel}
           </button>
           <button
             onClick={() => {
@@ -83,7 +107,7 @@ export default function PaymentMethodSelector({
             disabled={!selected}
             className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Confirm
+            {de.payments.confirm}
           </button>
         </div>
       </div>

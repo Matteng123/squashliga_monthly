@@ -1,5 +1,6 @@
 import { DayOfWeek, Month, PlayDay } from './types'
 import { LeagueSettings } from './types'
+import { calculateCost } from './pricingUtils'
 
 const DAY_OF_WEEK_MAP: { [key: number]: DayOfWeek } = {
   0: 'Sunday',
@@ -53,7 +54,7 @@ export function generateMonthsFrom(startDate: Date, count: number, settings: Lea
       playerStatus.set(user.id, {
         playerId: user.id,
         status: 'editing',
-        costAmount: 20,
+        costAmount: calculateCost(0), // €0 initially, €20 base only when 1+ game selected
       })
     })
 
@@ -110,7 +111,7 @@ export function isReminderDay(currentDate: Date, reminderDate: Date): boolean {
 }
 
 export function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('de-DE', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -119,7 +120,7 @@ export function formatDate(date: Date): string {
 }
 
 export function formatMonth(year: number, month: number): string {
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('de-DE', {
     month: 'long',
     year: 'numeric',
   }).format(new Date(year, month))

@@ -15,4 +15,7 @@ export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
   playersPerCourt: 4,
   monthlyDeadline: 30,
   reminderDay: 25,
+  bankAccountName: 'Squash Liga e.V.',
+  bankAccountIBAN: 'DE89370400440532013000',
+  paypalLink: 'https://paypal.me/squashliga',
 }

@@ -1,10 +1,10 @@
 export type Role = 'player' | 'admin'
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday'
 export type PlayDayStatus = 'open' | 'locked'
-export type MonthStatus = 'active' | 'archived'
+export type MonthStatus = 'active' | 'archived' | 'completed'
 export type EmailType = 'reminder' | 'admin_summary' | 'booking' | 'payment_reminder' | 'payment_confirmation'
-export type PaymentMethod = 'bank_transfer' | 'cash' | 'card'
-export type MonthPlayerStatus = 'editing' | 'committed' | 'self_paid' | 'confirmed'
+export type PaymentMethod = 'bank_transfer' | 'paypal'
+export type MonthPlayerStatus = 'editing' | 'committed' | 'payment_submitted' | 'confirmed' | 'unpaid'
 
 export interface User {
   id: string
@@ -18,6 +18,9 @@ export interface LeagueSettings {
   playersPerCourt: number
   monthlyDeadline: number
   reminderDay: number
+  bankAccountName: string
+  bankAccountIBAN: string
+  paypalLink: string
 }
 
 export interface PlayDay {

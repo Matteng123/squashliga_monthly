@@ -2,6 +2,7 @@
 
 import { Month, User, MonthPlayerStatus, PlayerMonthPayment } from '@/lib/types'
 import { formatPrice } from '@/lib/pricingUtils'
+import { de } from '@/lib/i18n'
 
 interface Props {
   month: Month
@@ -12,15 +13,17 @@ interface Props {
 const statusColors: { [key in MonthPlayerStatus]: string } = {
   editing: 'bg-blue-500/20 border-blue-500 text-blue-300',
   committed: 'bg-orange-500/20 border-orange-500 text-orange-300',
-  self_paid: 'bg-yellow-500/20 border-yellow-500 text-yellow-300',
+  payment_submitted: 'bg-yellow-500/20 border-yellow-500 text-yellow-300',
   confirmed: 'bg-emerald-500/20 border-emerald-500 text-emerald-300',
+  unpaid: 'bg-red-500/20 border-red-500 text-red-300',
 }
 
 const statusLabels: { [key in MonthPlayerStatus]: string } = {
-  editing: 'Editing',
-  committed: 'Committed',
-  self_paid: 'Self Paid',
-  confirmed: 'Confirmed',
+  editing: de.payments.editingStatus,
+  committed: de.payments.committedStatus,
+  payment_submitted: de.payments.paymentSubmittedStatus,
+  confirmed: de.payments.confirmedStatus,
+  unpaid: de.payments.unpaidStatus,
 }
 
 export default function PaymentStatusTable({
@@ -35,14 +38,14 @@ export default function PaymentStatusTable({
     }))
     .filter(item => item.payment)
     .sort((a, b) => {
-      const statusOrder = { editing: 0, committed: 1, self_paid: 2, confirmed: 3 }
+      const statusOrder = { editing: 0, committed: 1, payment_submitted: 2, confirmed: 3, unpaid: 4 }
       return statusOrder[a.payment!.status] - statusOrder[b.payment!.status]
     })
 
   if (sortedPlayers.length === 0) {
     return (
       <div className="card text-center py-8 text-slate-400">
-        No players in this month.
+        Keine Spieler in diesem Monat.
       </div>
     )
   }
@@ -52,11 +55,11 @@ export default function PaymentStatusTable({
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-600">
-            <th className="text-left py-3 px-4 font-semibold text-slate-300">Player</th>
-            <th className="text-right py-3 px-4 font-semibold text-slate-300">Cost</th>
-            <th className="text-center py-3 px-4 font-semibold text-slate-300">Status</th>
-            <th className="text-left py-3 px-4 font-semibold text-slate-300">Method</th>
-            <th className="text-right py-3 px-4 font-semibold text-slate-300">Action</th>
+            <th className="text-left py-3 px-4 font-semibold text-slate-300">{de.common.player}</th>
+            <th className="text-right py-3 px-4 font-semibold text-slate-300">{de.common.cost}</th>
+            <th className="text-center py-3 px-4 font-semibold text-slate-300">{de.common.status}</th>
+            <th className="text-left py-3 px-4 font-semibold text-slate-300">Methode</th>
+            <th className="text-right py-3 px-4 font-semibold text-slate-300">{de.common.action}</th>
           </tr>
         </thead>
         <tbody>
@@ -86,15 +89,15 @@ export default function PaymentStatusTable({
                 )}
               </td>
               <td className="py-3 px-4 text-right">
-                {payment!.status === 'self_paid' && (
+                {payment!.status === 'payment_submitted' && (
                   <button
                     onClick={() => onMarkConfirmed(user.id)}
                     className="btn-secondary text-xs px-2 py-1"
                   >
-                    Confirm
+                    {de.payments.markConfirmed}
                   </button>
                 )}
-                {payment!.status !== 'self_paid' && (
+                {payment!.status !== 'payment_submitted' && (
                   <span className="text-slate-600">—</span>
                 )}
               </td>

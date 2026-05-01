@@ -5,15 +5,20 @@ import useAppStore from '@/lib/store'
 import RoleSelector from '@/components/RoleSelector'
 import Header from '@/components/Header'
 import MonthSelector from '@/components/MonthSelector'
+import PlayerCycleOverview from '@/components/PlayerCycleOverview'
 import PlayDayCard from '@/components/PlayDayCard'
 import PaymentSummary from '@/components/PaymentSummary'
 import PaymentMethodSelector from '@/components/PaymentMethodSelector'
-import PaymentStatusTable from '@/components/PaymentStatusTable'
 import LeagueSettingsForm from '@/components/LeagueSettingsForm'
 import AdminSummaryCard from '@/components/AdminSummaryCard'
 import TimeSimControls from '@/components/TimeSimControls'
 import MailCenter from '@/components/MailCenter'
+import CloseMonthConfirmModal from '@/components/CloseMonthConfirmModal'
+import ArchivedMonthDetails from '@/components/ArchivedMonthDetails'
 import { PaymentMethod, MonthPlayerStatus } from '@/lib/types'
+import { calculateCost } from '@/lib/pricingUtils'
+import { formatMonth } from '@/lib/dateUtils'
+import { de } from '@/lib/i18n'
 
 export default function Home() {
   const currentUser = useAppStore(s => s.currentUser)
@@ -27,6 +32,7 @@ export default function Home() {
   const togglePlayDay = useAppStore(s => s.togglePlayDay)
   const initApp = useAppStore(s => s.initApp)
   const commitMonth = useAppStore(s => s.commitMonth)
+  const completeMonth = useAppStore(s => s.completeMonth)
   const setPaymentMethod = useAppStore(s => s.setPaymentMethod)
   const recordPayment = useAppStore(s => s.recordPayment)
   const markPaymentConfirmed = useAppStore(s => s.markPaymentConfirmed)
@@ -34,6 +40,7 @@ export default function Home() {
   const [selectedMonth, setSelectedMonth] = useState<any>(null)
   const [page, setPage] = useState<'role' | 'player' | 'admin' | 'mail'>('role')
   const [showPaymentMethodSelector, setShowPaymentMethodSelector] = useState(false)
+  const [showCloseMonthConfirm, setShowCloseMonthConfirm] = useState(false)
 
   useEffect(() => {
     if (months.length === 0) {
@@ -157,7 +164,7 @@ export default function Home() {
     const isMonthLocked = currentDate >= selectedMonth.deadlineDate
     const playerPaymentStatus = selectedMonth.playerStatus.get(currentUser.id)
     const paymentStatus: MonthPlayerStatus = playerPaymentStatus?.status || 'editing'
-    const costAmount = playerPaymentStatus?.costAmount || 20 + (gamesJoined * 5)
+    const costAmount = playerPaymentStatus?.costAmount || calculateCost(gamesJoined)
 
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col pb-40">
@@ -166,29 +173,27 @@ export default function Home() {
         <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-6 space-y-6">
           <div className="card bg-gradient-to-r from-orange-600/20 to-emerald-600/20 border-orange-600/50">
             <p className="text-slate-300 text-sm">
-              {isMonthLocked ? (
-                <>
-                  🔒 <span className="font-semibold">This month is locked</span> – no further changes allowed.
-                </>
-              ) : (
-                <>
-                  ✓ <span className="font-semibold">Selection open</span> – join or leave play days.
-                </>
-              )}
+              <span className="font-semibold">
+                {isMonthLocked ? de.player.selectionLocked : de.player.selectionOpen}
+              </span>
             </p>
           </div>
 
-          <MonthSelector
+          <PlayerCycleOverview
             months={months}
+            currentDate={currentDate}
             selectedMonth={selectedMonth}
+            currentUserId={currentUser.id}
             onSelectMonth={setSelectedMonth}
           />
 
           <div className="space-y-3">
-            <h2 className="text-lg font-bold text-white">Play Days</h2>
+            <h2 className="text-lg font-bold text-white">
+              {de.player.playDaysTitle} – {formatMonth(selectedMonth.year, selectedMonth.month)}
+            </h2>
             {selectedMonth.playDays.length === 0 ? (
               <div className="card text-center py-8 text-slate-400">
-                No play days scheduled for this month.
+                {de.player.noPlayDays}
               </div>
             ) : (
               selectedMonth.playDays.map((playDay: any) => (
@@ -199,6 +204,7 @@ export default function Home() {
                   isPlayerJoined={playDay.playersJoined.includes(currentUser.id)}
                   isLocked={isMonthLocked}
                   isMonthCommitted={paymentStatus !== 'editing'}
+                  paymentStatus={paymentStatus}
                   onToggle={() => togglePlayDay(selectedMonth.id, playDay.id)}
                 />
               ))
@@ -206,9 +212,9 @@ export default function Home() {
           </div>
 
           <div className="card bg-slate-700/50 border-slate-600">
-            <p className="text-sm text-slate-300 mb-2">💡 Tip: Join games to see your cost update below.</p>
+            <p className="text-sm text-slate-300 mb-2">{de.player.tip}</p>
             <p className="text-xs text-slate-400">
-              Base fee is always €20. Each game you join adds €5.
+              {de.player.baseFeeTip}
             </p>
           </div>
 
@@ -216,7 +222,7 @@ export default function Home() {
             onClick={() => setPage('mail')}
             className="btn-secondary w-full"
           >
-            📬 Mail Center
+            {de.player.mailCenter}
           </button>
         </main>
 
@@ -224,8 +230,23 @@ export default function Home() {
           gamesJoined={gamesJoined}
           status={paymentStatus}
           costAmount={costAmount}
-          onCommitMonth={() => commitMonth(selectedMonth.id, currentUser.id)}
+          onShowCloseConfirm={() => setShowCloseMonthConfirm(true)}
           onSelectPaymentMethod={() => setShowPaymentMethodSelector(true)}
+          paymentMethod={playerPaymentStatus?.paymentMethod}
+          bankAccountName={leagueSettings.bankAccountName}
+          bankAccountIBAN={leagueSettings.bankAccountIBAN}
+          paypalLink={leagueSettings.paypalLink}
+        />
+
+        <CloseMonthConfirmModal
+          isOpen={showCloseMonthConfirm}
+          costAmount={costAmount}
+          onClose={() => setShowCloseMonthConfirm(false)}
+          onConfirm={() => {
+            commitMonth(selectedMonth.id, currentUser.id)
+            setShowCloseMonthConfirm(false)
+            setShowPaymentMethodSelector(true)
+          }}
         />
 
         <PaymentMethodSelector
@@ -236,6 +257,10 @@ export default function Home() {
             setShowPaymentMethodSelector(false)
           }}
           selectedMethod={playerPaymentStatus?.paymentMethod}
+          bankAccountName={leagueSettings.bankAccountName}
+          bankAccountIBAN={leagueSettings.bankAccountIBAN}
+          paypalLink={leagueSettings.paypalLink}
+          costAmount={costAmount}
         />
       </div>
     )
@@ -243,27 +268,32 @@ export default function Home() {
 
   if (page === 'admin') {
     const sortedMonths = [...months].sort((a, b) => a.deadlineDate.getTime() - b.deadlineDate.getTime())
+    const activeMonths = sortedMonths.filter(m => m.status === 'active')
+    const archivedMonths = sortedMonths.filter(m => m.status === 'archived')
 
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col">
         <Header onMailClick={() => setPage('mail')} />
 
         <main className="flex-1 max-w-6xl mx-auto w-full px-4 py-6 space-y-6">
-          <LeagueSettingsForm initialSettings={leagueSettings} />
-
-          <div className="divider" />
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
-              <h2 className="text-xl font-bold text-white">Monthly Overview</h2>
-              {sortedMonths.slice(0, 4).map(month => (
-                <AdminSummaryCard
-                  key={month.id}
-                  month={month}
-                  isCurrentMonth={currentMonth?.id === month.id}
-                  isDeadlinePassed={currentDate >= month.deadlineDate}
-                />
-              ))}
+              <h2 className="text-xl font-bold text-white">{de.admin.monthlyOverview}</h2>
+              {activeMonths.length === 0 ? (
+                <div className="card text-center py-8 text-slate-400">Keine aktiven Monate</div>
+              ) : (
+                activeMonths.map(month => (
+                  <AdminSummaryCard
+                    key={month.id}
+                    month={month}
+                    isCurrentMonth={currentMonth?.id === month.id}
+                    isDeadlinePassed={currentDate >= month.deadlineDate}
+                    onCompleteMonth={() => completeMonth(month.id)}
+                    users={users}
+                    onMarkConfirmed={(userId: string) => markPaymentConfirmed(month.id, userId)}
+                  />
+                ))
+              )}
             </div>
 
             <div className="space-y-4">
@@ -272,35 +302,40 @@ export default function Home() {
                 onClick={() => setPage('mail')}
                 className="btn-secondary w-full"
               >
-                📬 Mail Center
+                {de.player.mailCenter}
               </button>
             </div>
           </div>
 
+          {archivedMonths.length > 0 && (
+            <>
+              <div className="divider" />
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold text-white">📦 Archiv</h2>
+                <div className="space-y-3">
+                  {archivedMonths.map(month => (
+                    <ArchivedMonthDetails key={month.id} month={month} users={users} />
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
           <div className="divider" />
 
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold text-white">Payment Status</h2>
-            {currentMonth && (
-              <PaymentStatusTable
-                month={currentMonth}
-                users={users}
-                onMarkConfirmed={(userId: string) => {
-                  markPaymentConfirmed(currentMonth.id, userId)
-                }}
-              />
-            )}
-          </div>
-
           <div className="card bg-slate-700/50 border-slate-600">
-            <p className="text-sm text-slate-300 mb-2">💡 Admin Tips:</p>
+            <p className="text-sm text-slate-300 mb-2">{de.admin.tips}</p>
             <ul className="text-xs text-slate-400 space-y-1">
-              <li>✓ Configure league settings (play days, court size, deadlines)</li>
-              <li>✓ Use time controls to simulate deadlines and trigger emails</li>
-              <li>✓ Check Mail Center to see generated emails</li>
-              <li>✓ Settings apply to all future months when saved</li>
+              <li>{de.admin.tip1}</li>
+              <li>{de.admin.tip2}</li>
+              <li>{de.admin.tip3}</li>
+              <li>{de.admin.tip4}</li>
             </ul>
           </div>
+
+          <div className="divider" />
+
+          <LeagueSettingsForm initialSettings={leagueSettings} />
         </main>
       </div>
     )
@@ -313,22 +348,24 @@ export default function Home() {
 
         <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
           <button onClick={() => setPage(currentUser.role === 'player' ? 'player' : 'admin')} className="btn-secondary mb-6">
-            ← Back
+            {de.mail.back}
           </button>
 
-          <h1 className="text-3xl font-bold text-white mb-2">📬 Mail Center</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">{de.mail.title}</h1>
           <p className="text-slate-400 text-sm mb-6">
-            Simulated emails from the league system. Showing last 3 months.
+            {de.mail.subtitle}
           </p>
 
           <MailCenter />
 
           <div className="mt-8 card bg-slate-700/50 border-slate-600">
-            <p className="text-sm text-slate-300 mb-2">💡 About System Emails:</p>
+            <p className="text-sm text-slate-300 mb-2">{de.mail.aboutSystemEmails}</p>
             <ul className="text-xs text-slate-400 space-y-2">
-              <li><strong>Player Reminder:</strong> Sent on the reminder day if a player hasn't selected any play days for next month.</li>
-              <li><strong>Admin Summary:</strong> Sent immediately after the deadline with full participation details.</li>
-              <li><strong>Booking Email:</strong> Clean format for forwarding to Cosmo Sport.</li>
+              <li><strong>{de.emailTypes.reminder}:</strong> {de.mail.reminderEmail}</li>
+              <li><strong>{de.emailTypes.adminSummary}:</strong> {de.mail.adminSummaryEmail}</li>
+              <li><strong>{de.emailTypes.booking}:</strong> {de.mail.bookingEmail}</li>
+              <li><strong>{de.emailTypes.paymentReminder}:</strong> {de.mail.paymentReminderEmail}</li>
+              <li><strong>{de.emailTypes.paymentConfirmation}:</strong> {de.mail.paymentConfirmationEmail}</li>
             </ul>
           </div>
         </main>

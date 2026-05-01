@@ -3,6 +3,7 @@
 import useAppStore from '@/lib/store'
 import { formatDate } from '@/lib/dateUtils'
 import { Mail } from 'lucide-react'
+import { de } from '@/lib/i18n'
 
 interface HeaderProps {
   onMailClick?: () => void
@@ -26,22 +27,22 @@ export default function Header({ onMailClick }: HeaderProps) {
         <div className="flex items-center justify-between gap-4 mb-3">
           <div className="flex items-center gap-4">
             <button onClick={() => setCurrentUser(null)} className="text-lg font-bold hover:opacity-80">
-              🏸 Squash League
+              {de.header.title}
             </button>
             <div className="text-sm text-slate-400">
-              {currentUser.name} <span className="text-slate-500">({currentUser.role})</span>
+              {currentUser.name} <span className="text-slate-500">({currentUser.role === 'player' ? de.common.player : de.common.admin})</span>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="text-sm text-slate-400 text-right">
-              <div>Today: {formatDate(currentDate)}</div>
+              <div>{de.common.today}: {formatDate(currentDate)}</div>
             </div>
 
             <button
               onClick={onMailClick}
               className="relative p-2 hover:bg-slate-700 rounded-lg transition-colors"
-              title="Mail Center"
+              title={de.header.mailCenter}
             >
               <Mail size={20} />
               {mailCount > 0 && (
@@ -55,7 +56,7 @@ export default function Header({ onMailClick }: HeaderProps) {
               onClick={handleLogout}
               className="btn-secondary text-sm"
             >
-              Switch Role
+              {de.common.switchRole}
             </button>
           </div>
         </div>

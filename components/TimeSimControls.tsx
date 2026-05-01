@@ -3,6 +3,7 @@
 import useAppStore from '@/lib/store'
 import { formatDate } from '@/lib/dateUtils'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { de } from '@/lib/i18n'
 
 export default function TimeSimControls() {
   const currentDate = useAppStore(s => s.currentDate)
@@ -30,46 +31,45 @@ export default function TimeSimControls() {
 
   return (
     <div className="card space-y-4">
-      <h3 className="font-semibold text-white mb-3">⏰ Time Simulation</h3>
+      <h3 className="font-semibold text-white mb-3">⏰ {de.timeSimulation.title}</h3>
 
       <div className="bg-slate-900 rounded p-3 text-center">
-        <p className="text-xs text-slate-500 mb-1">Current Date</p>
+        <p className="text-xs text-slate-500 mb-1">{de.timeSimulation.currentDate}</p>
         <p className="font-mono text-lg font-bold text-white">{formatDate(currentDate)}</p>
       </div>
 
       <div className="flex gap-2">
         <button onClick={handlePrevDay} className="btn-secondary flex-1">
           <ChevronLeft size={16} className="inline mr-1" />
-          Previous Day
+          Voriger Tag
         </button>
         <button onClick={handleTodayClick} className="btn-secondary flex-1">
-          Today
+          Heute
         </button>
         <button onClick={handleNextDay} className="btn-secondary flex-1">
-          Next Day
+          Nächster Tag
           <ChevronRight size={16} className="inline ml-1" />
         </button>
       </div>
 
       <div className="divider" />
 
-      <p className="text-xs text-slate-400 font-semibold">Quick Jump</p>
+      <p className="text-xs text-slate-400 font-semibold">Schneller Sprung</p>
 
       {currentMonth && (
         <button onClick={jumpToDeadline} className="btn-accent w-full text-sm">
-          → Jump to Deadline ({formatDate(currentMonth.deadlineDate)})
+          → {de.timeSimulation.jumpToDeadline} ({formatDate(currentMonth.deadlineDate)})
         </button>
       )}
 
       {nextMonth && (
         <button onClick={jumpToReminderDay} className="btn-primary w-full text-sm">
-          → Jump to Reminder ({formatDate(nextMonth.reminderDate)})
+          → {de.timeSimulation.jumpToReminderDay} ({formatDate(nextMonth.reminderDate)})
         </button>
       )}
 
       <p className="text-xs text-slate-500 pt-2">
-        💡 Trigger deadline and reminder emails by jumping to those dates. Check the Mail Center to see
-        generated emails.
+        💡 Lösen Sie Frist- und Erinnerungs-E-Mails aus, indem Sie zu diesen Daten springen. Überprüfen Sie das Mailcenter, um generierte E-Mails zu sehen.
       </p>
     </div>
   )

@@ -1,16 +1,23 @@
 'use client'
 
-import { Month } from '@/lib/types'
+import { useState } from 'react'
+import { Month, User } from '@/lib/types'
 import { formatMonth, formatDate } from '@/lib/dateUtils'
-import { Users } from 'lucide-react'
+import { Users, ChevronDown, ChevronUp } from 'lucide-react'
+import { de } from '@/lib/i18n'
+import PaymentStatusTable from './PaymentStatusTable'
 
 interface Props {
   month: Month
   isCurrentMonth: boolean
   isDeadlinePassed: boolean
+  onCompleteMonth?: () => void
+  users: User[]
+  onMarkConfirmed?: (userId: string) => void
 }
 
-export default function AdminSummaryCard({ month, isCurrentMonth, isDeadlinePassed }: Props) {
+export default function AdminSummaryCard({ month, isCurrentMonth, isDeadlinePassed, onCompleteMonth, users, onMarkConfirmed }: Props) {
+  const [showPaymentStatus, setShowPaymentStatus] = useState(false)
   const uniquePlayers = new Set(month.playDays.flatMap(pd => pd.playersJoined)).size
   const totalSlots = month.playDays.reduce((sum, pd) => sum + pd.playersJoined.length, 0)
 
@@ -21,19 +28,24 @@ export default function AdminSummaryCard({ month, isCurrentMonth, isDeadlinePass
           <h3 className="text-lg font-bold text-white">{formatMonth(month.year, month.month)}</h3>
           <p className="text-xs text-slate-400">Deadline: {formatDate(month.deadlineDate)}</p>
         </div>
-        {isCurrentMonth && (
-          <span className="badge bg-emerald-900 text-emerald-200 text-xs">Current</span>
-        )}
+        <div className="flex gap-2">
+          {isCurrentMonth && (
+            <span className="badge bg-emerald-900 text-emerald-200 text-xs">{de.admin.current}</span>
+          )}
+          {month.status === 'archived' && (
+            <span className="badge bg-cyan-900 text-cyan-200 text-xs">{de.admin.completed}</span>
+          )}
+        </div>
       </div>
 
       <div className="bg-slate-900 rounded p-3 mb-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <p className="text-xs text-slate-500 mb-1">Unique Players</p>
+            <p className="text-xs text-slate-500 mb-1">{de.admin.uniquePlayers}</p>
             <p className="text-2xl font-bold text-emerald-400">{uniquePlayers}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 mb-1">Total Slots</p>
+            <p className="text-xs text-slate-500 mb-1">{de.admin.totalSlots}</p>
             <p className="text-2xl font-bold text-orange-400">{totalSlots}</p>
           </div>
         </div>
@@ -56,7 +68,48 @@ export default function AdminSummaryCard({ month, isCurrentMonth, isDeadlinePass
 
       {isDeadlinePassed && (
         <div className="mt-3 pt-3 border-t border-slate-700 text-xs text-orange-400">
-          🔒 Deadline passed – emails sent
+          {de.admin.deadlinePassed}
+        </div>
+      )}
+
+      {/* Payment Status Section */}
+      <div className="mt-4 pt-4 border-t border-slate-700">
+        <button
+          onClick={() => setShowPaymentStatus(!showPaymentStatus)}
+          className="flex items-center justify-between w-full text-sm font-semibold text-white hover:text-emerald-400 transition-colors"
+        >
+          <span>{de.admin.paymentStatus}</span>
+          {showPaymentStatus ? (
+            <ChevronUp size={18} />
+          ) : (
+            <ChevronDown size={18} />
+          )}
+        </button>
+
+        {showPaymentStatus && (
+          <div className="mt-3">
+            <PaymentStatusTable
+              month={month}
+              users={users}
+              onMarkConfirmed={onMarkConfirmed || (() => {})}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Archive Month Button */}
+      {month.status === 'active' && onCompleteMonth && (
+        <button
+          onClick={onCompleteMonth}
+          className="mt-4 w-full btn-primary text-sm"
+        >
+          {de.admin.completeMonth}
+        </button>
+      )}
+
+      {month.status === 'archived' && (
+        <div className="mt-4 pt-4 border-t border-slate-700">
+          <p className="text-xs text-cyan-400">{de.admin.monthCompleted}</p>
         </div>
       )}
     </div>

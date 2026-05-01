@@ -2,12 +2,12 @@ import { User, LeagueSettings } from './types'
 
 export const MOCK_USERS: User[] = [
   { id: 'admin-1', name: 'Admin User', email: 'admin@squash.local', role: 'admin' },
-  { id: 'player-1', name: 'Alice Johnson', email: 'alice@squash.local', role: 'player' },
-  { id: 'player-2', name: 'Bob Smith', email: 'bob@squash.local', role: 'player' },
-  { id: 'player-3', name: 'Charlie Brown', email: 'charlie@squash.local', role: 'player' },
-  { id: 'player-4', name: 'Diana Prince', email: 'diana@squash.local', role: 'player' },
-  { id: 'player-5', name: 'Edward Norton', email: 'edward@squash.local', role: 'player' },
-  { id: 'player-6', name: 'Fiona Green', email: 'fiona@squash.local', role: 'player' },
+  { id: 'player-1', name: 'Mike Coxlong', email: 'mike@squash.local', role: 'player' },
+  { id: 'player-2', name: 'Justin Herhole', email: 'justin@squash.local', role: 'player' },
+  { id: 'player-3', name: 'Jack Mehoff', email: 'jack@squash.local', role: 'player' },
+  { id: 'player-4', name: 'Ben Dover', email: 'ben@squash.local', role: 'player' },
+  { id: 'player-5', name: 'Hugh Janus', email: 'hugh@squash.local', role: 'player' },
+  { id: 'player-6', name: 'Seymour Butts', email: 'seymour@squash.local', role: 'player' },
 ]
 
 export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {

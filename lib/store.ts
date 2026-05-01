@@ -2,8 +2,13 @@ import { create } from 'zustand'
 import { AppState, User, LeagueSettings, Month, PlayDay, Mail, PaymentMethod, MonthPlayerStatus } from './types'
 import { generateMonthsFrom, formatDate, formatMonth } from './dateUtils'
 import { calculateCourtsRequired } from './courtUtils'
+import { calculateCost } from './pricingUtils'
 import { MOCK_USERS, DEFAULT_LEAGUE_SETTINGS } from './mockData'
-import { checkAndGenerateEmails } from './emailLogic'
+import {
+  checkAndGenerateEmails,
+  generatePaymentConfirmationSummary,
+  generatePaymentSubmittedReceipt,
+} from './emailLogic'
 
 interface Store extends AppState {
   // Computed (store in state, not getter)
@@ -24,6 +29,7 @@ interface Store extends AppState {
   updateMonth: (monthId: string, playDays: PlayDay[]) => void
   markMailAsRead: (mailId: string) => void
   commitMonth: (monthId: string, userId: string) => void
+  completeMonth: (monthId: string) => void
   setPaymentMethod: (monthId: string, userId: string, method: PaymentMethod) => void
   recordPayment: (monthId: string, userId: string) => void
   markPaymentConfirmed: (monthId: string, userId: string) => void
@@ -88,7 +94,7 @@ const useAppStore = create<Store>((set, get) => ({
 
   initApp: () => {
     set(state => {
-      const months = generateMonthsFrom(state.currentDate, 4, state.leagueSettings, state.users)
+      const months = generateMonthsFrom(state.currentDate, 3, state.leagueSettings, state.users)
       const cm = computeCurrentMonth(months, state.currentDate)
       const nm = computeNextMonth(months, state.currentDate)
       return {
@@ -102,10 +108,33 @@ const useAppStore = create<Store>((set, get) => ({
 
   setCurrentDate: (date: Date) => {
     set(state => {
-      let months = state.months
+      let months = [...state.months]
 
+      // Ensure we have the current month
       if (!months.some(m => m.year === date.getFullYear() && m.month === date.getMonth())) {
-        months = [...months, ...generateMonthsFrom(date, 2, state.leagueSettings, state.users)].sort((a, b) => a.deadlineDate.getTime() - b.deadlineDate.getTime())
+        const newMonths = generateMonthsFrom(date, 2, state.leagueSettings, state.users)
+        months = [...months, ...newMonths.filter(nm => !months.some(m => m.id === nm.id))]
+      }
+
+      // Sort and ensure we always have at least 3 ACTIVE months from current date
+      months = months.sort((a, b) => a.deadlineDate.getTime() - b.deadlineDate.getTime())
+
+      const futureActiveMonths = months.filter(m =>
+        m.status === 'active' && (
+          m.year > date.getFullYear() ||
+          (m.year === date.getFullYear() && m.month >= date.getMonth())
+        )
+      )
+
+      if (futureActiveMonths.length < 3) {
+        const lastActiveMonth = months.filter(m => m.status === 'active').pop()
+        const nextStart = lastActiveMonth
+          ? new Date(lastActiveMonth.year, lastActiveMonth.month + 1)
+          : date
+        const neededCount = 3 - futureActiveMonths.length
+        const newMonths = generateMonthsFrom(nextStart, neededCount, state.leagueSettings, state.users)
+        months = [...months, ...newMonths.filter(nm => !months.some(m => m.id === nm.id))]
+        months = months.sort((a, b) => a.deadlineDate.getTime() - b.deadlineDate.getTime())
       }
 
       const cm = computeCurrentMonth(months, date)
@@ -146,7 +175,7 @@ const useAppStore = create<Store>((set, get) => ({
   updateLeagueSettings: (settings: LeagueSettings) => {
     set(state => {
       const currentDate = state.currentDate
-      const newMonths = generateMonthsFrom(currentDate, 4, settings, state.users)
+      const newMonths = generateMonthsFrom(currentDate, 3, settings, state.users)
       const cm = computeCurrentMonth(newMonths, currentDate)
       const nm = computeNextMonth(newMonths, currentDate)
 
@@ -196,7 +225,7 @@ const useAppStore = create<Store>((set, get) => ({
 
           // Calculate new games count and update cost
           const gamesJoined = updatedPlayDays.filter(pd => pd.playersJoined.includes(userId)).length
-          const newCost = 20 + (gamesJoined * 5)
+          const newCost = calculateCost(gamesJoined)
 
           const playerStatus = new Map(m.playerStatus)
           const currentPayment = playerStatus.get(userId)
@@ -273,6 +302,24 @@ const useAppStore = create<Store>((set, get) => ({
     })
   },
 
+  completeMonth: (monthId: string) => {
+    set(state => {
+      const months = state.months.map(m => {
+        if (m.id === monthId) {
+          const playerStatus = new Map(m.playerStatus)
+          playerStatus.forEach((payment, playerId) => {
+            if (payment.status !== 'confirmed') {
+              playerStatus.set(playerId, { ...payment, status: 'unpaid' })
+            }
+          })
+          return { ...m, status: 'archived' as const, playerStatus }
+        }
+        return m
+      })
+      return { months }
+    })
+  },
+
   setPaymentMethod: (monthId: string, userId: string, method: PaymentMethod) => {
     set(state => {
       const months = state.months.map(m => {
@@ -280,14 +327,30 @@ const useAppStore = create<Store>((set, get) => ({
           const playerStatus = new Map(m.playerStatus)
           const currentPayment = playerStatus.get(userId)
           if (currentPayment) {
-            playerStatus.set(userId, { ...currentPayment, paymentMethod: method, status: 'committed' })
+            playerStatus.set(userId, { ...currentPayment, paymentMethod: method, status: 'payment_submitted' })
           }
           return { ...m, playerStatus }
         }
         return m
       })
+
+      // Generate payment receipt email for the player
+      const updatedMonth = months.find(m => m.id === monthId)
+      if (updatedMonth) {
+        const receiptEmail = generatePaymentSubmittedReceipt(
+          state.currentDate,
+          updatedMonth,
+          userId,
+          state.users,
+        )
+        if (receiptEmail) {
+          return { months, mail: [...state.mail, receiptEmail] }
+        }
+      }
+
       return { months }
     })
+    get()._computeRecentMail()
   },
 
   recordPayment: (monthId: string, userId: string) => {
@@ -297,7 +360,7 @@ const useAppStore = create<Store>((set, get) => ({
           const playerStatus = new Map(m.playerStatus)
           const currentPayment = playerStatus.get(userId)
           if (currentPayment) {
-            playerStatus.set(userId, { ...currentPayment, status: 'self_paid', paymentRecordedAt: new Date() })
+            playerStatus.set(userId, { ...currentPayment, status: 'payment_submitted', paymentRecordedAt: new Date() })
           }
           return { ...m, playerStatus }
         }
@@ -308,35 +371,39 @@ const useAppStore = create<Store>((set, get) => ({
   },
 
   markPaymentConfirmed: (monthId: string, userId: string) => {
+    console.log('🔔 markPaymentConfirmed called:', { monthId, userId })
     set(state => {
       const months = state.months.map(m => {
         if (m.id === monthId) {
           const playerStatus = new Map(m.playerStatus)
           const currentPayment = playerStatus.get(userId)
-          if (currentPayment) {
-            playerStatus.set(userId, { ...currentPayment, status: 'confirmed', paymentConfirmedAt: new Date() })
-          }
+          // Ensure user exists in map, update status to 'confirmed'
+          playerStatus.set(userId, {
+            ...(currentPayment || { playerId: userId, status: 'editing', costAmount: 0 }),
+            status: 'confirmed',
+            paymentConfirmedAt: state.currentDate,
+          })
           return { ...m, playerStatus }
         }
         return m
       })
 
       const updatedMonth = months.find(m => m.id === monthId)
-      const player = state.users.find(u => u.id === userId)
-      if (updatedMonth && player) {
-        const paymentStatus = updatedMonth.playerStatus.get(userId)
-        if (paymentStatus) {
-          const confirmationEmail: Mail = {
-            id: `payment-confirmation-${monthId}-${userId}`,
-            timestamp: new Date(),
-            recipient: userId,
-            subject: `Payment confirmed for ${formatMonth(updatedMonth.year, updatedMonth.month)}`,
-            content: `Hi ${player.name},\n\nWe have received your payment of €${paymentStatus.costAmount}.\n\nThank you for your participation in the Squash League!\n\nBest regards,\nSquash League`,
-            type: 'payment_confirmation',
-            monthId,
-          }
+      if (updatedMonth) {
+        console.log('✅ Updated month found, generating email...')
+        const confirmationEmail = generatePaymentConfirmationSummary(
+          state.currentDate,
+          updatedMonth,
+          userId,
+          state.users,
+          state.leagueSettings,
+        )
 
+        if (confirmationEmail) {
+          console.log('✉️ Email generated successfully, adding to mail...')
           return { months, mail: [...state.mail, confirmationEmail] }
+        } else {
+          console.log('❌ Email generation returned null')
         }
       }
 

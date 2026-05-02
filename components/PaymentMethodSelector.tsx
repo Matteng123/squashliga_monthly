@@ -17,14 +17,14 @@ interface Props {
 
 const methods: { value: PaymentMethod; label: string; description: string }[] = [
   {
-    value: 'bank_transfer',
-    label: de.payments.bankTransfer,
-    description: de.payments.bankTransferDesc,
-  },
-  {
     value: 'paypal',
     label: de.payments.paypal,
     description: de.payments.paypalDesc,
+  },
+  {
+    value: 'bank_transfer',
+    label: de.payments.bankTransfer,
+    description: de.payments.bankTransferDesc,
   },
 ]
 
@@ -38,7 +38,7 @@ export default function PaymentMethodSelector({
   paypalLink,
   costAmount,
 }: Props) {
-  const [selected, setSelected] = useState<PaymentMethod | undefined>(selectedMethod)
+  const [selected, setSelected] = useState<PaymentMethod>(selectedMethod ?? 'paypal')
   const [showDetails, setShowDetails] = useState(false)
 
   if (!isOpen) return null

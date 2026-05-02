@@ -96,27 +96,35 @@ export function generateBookingEmails(
   const bookingKey = `booking-${currentMonth.id}`
   if (existingMail.some(m => m.id === bookingKey)) return newMails
 
-  let content = `=== BOOKING INFORMATION ===\n`
-  content += `Month: ${formatMonth(currentMonth.year, currentMonth.month)}\n\n`
+  const uniquePlayers = new Set(currentMonth.playDays.flatMap(pd => pd.playersJoined)).size
+  const totalSlots = currentMonth.playDays.reduce((sum, pd) => sum + pd.playersJoined.length, 0)
+  const totalBase = uniquePlayers * 20
+  const totalGames = totalSlots * 5
+  const totalAmount = totalBase + totalGames
+
+  let content = `=== BUCHUNG: ${formatMonth(currentMonth.year, currentMonth.month)} ===\n\n`
+  content += `SPIELTAGE:\n\n`
 
   for (const playDay of currentMonth.playDays) {
     const playerCount = playDay.playersJoined.length
     if (playerCount === 0) continue
     const courts = calculateCourtsRequired(playerCount, 4)
-    content += `Date: ${formatDate(playDay.date)}\n`
-    content += `Players: ${playerCount}\n`
-    content += `Courts needed: ${courts}\n\n`
+    content += `${formatDate(playDay.date)}\n`
+    content += `Spieler: ${playerCount} | Courts: ${courts}\n\n`
   }
 
-  content += `---\n`
-  content += `Please forward this to Cosmo Sport for court booking.\n`
-  content += `Generated: ${new Date().toISOString()}`
+  content += `─────────────────────\n`
+  content += `ABRECHNUNG:\n\n`
+  content += `${uniquePlayers} Spieler × €20,00 Grundgebühr = €${totalBase.toFixed(2)}\n`
+  content += `${totalSlots} Spielplätze × €5,00 = €${totalGames.toFixed(2)}\n`
+  content += `─────────────────────\n`
+  content += `Gesamtbetrag: €${totalAmount.toFixed(2)}\n`
 
   newMails.push({
     id: bookingKey,
     timestamp: currentDate,
     recipient: 'admin',
-    subject: `[Booking] Cosmo Sport – ${formatMonth(currentMonth.year, currentMonth.month)}`,
+    subject: `[Buchung] Cosmo Sport – ${formatMonth(currentMonth.year, currentMonth.month)}`,
     content,
     type: 'booking',
     monthId: currentMonth.id,

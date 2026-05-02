@@ -78,7 +78,7 @@ export default function Home() {
   useEffect(() => {
     if (page === 'player' && selectedMonth && currentDate >= selectedMonth.deadlineDate) {
       const playerPaymentStatus = selectedMonth.playerStatus.get(currentUserId || '')
-      if (playerPaymentStatus?.status === 'editing') {
+      if (playerPaymentStatus?.status === 'open') {
         autoCommitUnfinishedMonths(selectedMonth.id)
       }
     }
@@ -163,7 +163,7 @@ export default function Home() {
     ).length
     const isMonthLocked = currentDate >= selectedMonth.deadlineDate
     const playerPaymentStatus = selectedMonth.playerStatus.get(currentUser.id)
-    const paymentStatus: MonthPlayerStatus = playerPaymentStatus?.status || 'editing'
+    const paymentStatus: MonthPlayerStatus = playerPaymentStatus?.status || 'open'
     const costAmount = playerPaymentStatus?.costAmount || calculateCost(gamesJoined)
 
     return (
@@ -203,7 +203,7 @@ export default function Home() {
                   monthId={selectedMonth.id}
                   isPlayerJoined={playDay.playersJoined.includes(currentUser.id)}
                   isLocked={isMonthLocked}
-                  isMonthCommitted={paymentStatus !== 'editing'}
+                  isMonthCommitted={paymentStatus !== 'open'}
                   paymentStatus={paymentStatus}
                   onToggle={() => togglePlayDay(selectedMonth.id, playDay.id)}
                 />

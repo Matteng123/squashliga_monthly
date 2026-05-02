@@ -2,39 +2,35 @@ import { Mail, Month, User, LeagueSettings } from './types'
 import { isReminderDay, isDeadlinePassed, formatDate, formatMonth } from './dateUtils'
 import { calculateCourtsRequired } from './courtUtils'
 
+function isSevenDaysBeforeMonthEnd(date: Date): boolean {
+  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+  return lastDay - date.getDate() === 7
+}
+
 export function generateReminders(
   currentDate: Date,
-  nextMonth: Month | undefined,
+  currentMonth: Month | undefined,
   users: User[],
   existingMail: Mail[],
 ): Mail[] {
   const newMails: Mail[] = []
 
-  if (!nextMonth) return newMails
+  if (!currentMonth) return newMails
+  if (!isSevenDaysBeforeMonthEnd(currentDate)) return newMails
 
-  if (!isReminderDay(currentDate, nextMonth.reminderDate)) return newMails
+  const reminderKey = `reminder-${currentMonth.id}`
+  if (existingMail.some(m => m.id.startsWith(reminderKey))) return newMails
 
-  const reminderKey = `reminder-${nextMonth.id}`
-  if (existingMail.some(m => m.id === reminderKey)) return newMails
-
-  const players = users.filter(u => u.role === 'player')
-
-  for (const player of players) {
-    const hasSelection = nextMonth.playDays.some(pd => pd.playersJoined.includes(player.id))
-    if (!hasSelection) {
-      newMails.push({
-        id: `${reminderKey}-${player.id}`,
-        timestamp: currentDate,
-        recipient: player.id,
-        subject: `Don't forget: Select your play days for ${formatMonth(nextMonth.year, nextMonth.month)}`,
-        content: `Hi ${player.name},\n\nThis is a friendly reminder to select your play days for ${formatMonth(
-          nextMonth.year,
-          nextMonth.month,
-        )}.\n\nThe selection deadline is ${formatDate(nextMonth.deadlineDate)}. After this date, all play days will be locked and you won't be able to make changes.\n\nLog in to the app and select your games now!\n\nBest regards,\nSquash League`,
-        type: 'reminder',
-        monthId: nextMonth.id,
-      })
-    }
+  for (const user of users) {
+    newMails.push({
+      id: `${reminderKey}-${user.id}`,
+      timestamp: currentDate,
+      recipient: user.id,
+      subject: `Reminder: Enter your play days for ${formatMonth(currentMonth.year, currentMonth.month)}`,
+      content: `Hi ${user.name},\n\nJust a reminder — only 7 days left in the month! Please make sure your play days for ${formatMonth(currentMonth.year, currentMonth.month)} are entered.\n\nThe selection deadline is ${formatDate(currentMonth.deadlineDate)}. After this date, all play days will be locked.\n\nLog in to the app and select your games now!\n\nBest regards,\nSquash League`,
+      type: 'reminder',
+      monthId: currentMonth.id,
+    })
   }
 
   return newMails
@@ -280,7 +276,7 @@ export function checkAndGenerateEmails(
 ): Mail[] {
   const newMails: Mail[] = []
 
-  newMails.push(...generateReminders(currentDate, nextMonth, users, existingMail))
+  newMails.push(...generateReminders(currentDate, currentMonth, users, existingMail))
   newMails.push(...generateAdminSummaries(currentDate, currentMonth, existingMail))
   newMails.push(...generateBookingEmails(currentDate, currentMonth, existingMail))
   newMails.push(...generatePaymentReminders(currentDate, currentMonth, users, existingMail))

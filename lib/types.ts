@@ -4,7 +4,7 @@ export type PlayDayStatus = 'open' | 'locked'
 export type MonthStatus = 'active' | 'archived' | 'completed'
 export type EmailType = 'reminder' | 'admin_summary' | 'booking' | 'payment_reminder' | 'payment_confirmation'
 export type PaymentMethod = 'bank_transfer' | 'paypal'
-export type MonthPlayerStatus = 'editing' | 'committed' | 'payment_submitted' | 'confirmed' | 'unpaid'
+export type MonthPlayerStatus = 'open' | 'committed' | 'payment_submitted' | 'confirmed' | 'unpaid'
 
 export interface User {
   id: string

@@ -260,10 +260,10 @@ const useAppStore = create<Store>((set, get) => ({
   },
 
   jumpToReminderDay: () => {
-    const { nextMonth } = get()
-    if (nextMonth) {
-      get().setCurrentDate(nextMonth.reminderDate)
-    }
+    const { currentDate } = get()
+    const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
+    const reminderDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), lastDay - 7)
+    get().setCurrentDate(reminderDay)
   },
 
   switchRole: () => {
@@ -379,7 +379,7 @@ const useAppStore = create<Store>((set, get) => ({
           const currentPayment = playerStatus.get(userId)
           // Ensure user exists in map, update status to 'confirmed'
           playerStatus.set(userId, {
-            ...(currentPayment || { playerId: userId, status: 'editing', costAmount: 0 }),
+            ...(currentPayment || { playerId: userId, status: 'open', costAmount: 0 }),
             status: 'confirmed',
             paymentConfirmedAt: state.currentDate,
           })
@@ -418,7 +418,7 @@ const useAppStore = create<Store>((set, get) => ({
         if (m.id === monthId) {
           const playerStatus = new Map(m.playerStatus)
           playerStatus.forEach((payment, playerId) => {
-            if (payment.status === 'editing') {
+            if (payment.status === 'open') {
               playerStatus.set(playerId, { ...payment, status: 'committed' })
             }
           })

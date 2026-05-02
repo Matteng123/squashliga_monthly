@@ -53,7 +53,7 @@ export function generateMonthsFrom(startDate: Date, count: number, settings: Lea
     users.forEach(user => {
       playerStatus.set(user.id, {
         playerId: user.id,
-        status: 'editing',
+        status: 'open',
         costAmount: calculateCost(0), // €0 initially, €20 base only when 1+ game selected
       })
     })

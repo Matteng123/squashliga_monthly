@@ -14,8 +14,8 @@ interface Props {
 }
 
 const statusConfig: { [key in MonthPlayerStatus]: { label: string; color: string; icon: string } } = {
-  editing: {
-    label: de.payments.editingStatus,
+  open: {
+    label: de.payments.openStatus,
     color: 'bg-blue-500/20 border-blue-500 text-blue-300',
     icon: '✏️',
   },
@@ -73,7 +73,7 @@ export default function PlayerCycleOverview({
       <div className="grid grid-cols-3 gap-2">
         {cycleMonths.map(month => {
           const playerPayment = month.playerStatus.get(currentUserId)
-          const status: MonthPlayerStatus = playerPayment?.status || 'editing'
+          const status: MonthPlayerStatus = playerPayment?.status || 'open'
           const gamesJoined = month.playDays.filter(pd =>
             pd.playersJoined.includes(currentUserId),
           ).length

@@ -26,8 +26,8 @@ export function generateReminders(
       id: `${reminderKey}-${user.id}`,
       timestamp: currentDate,
       recipient: user.id,
-      subject: `Reminder: Enter your play days for ${formatMonth(currentMonth.year, currentMonth.month)}`,
-      content: `Hi ${user.name},\n\nJust a reminder — only 7 days left in the month! Please make sure your play days for ${formatMonth(currentMonth.year, currentMonth.month)} are entered.\n\nThe selection deadline is ${formatDate(currentMonth.deadlineDate)}. After this date, all play days will be locked.\n\nLog in to the app and select your games now!\n\nBest regards,\nSquash League`,
+      subject: `Reminder: 7 days left to sign up and pay for ${formatMonth(currentMonth.year, currentMonth.month)}`,
+      content: `Hi ${user.name},\n\nYou have 7 days left to:\n\n1. Select your play days for ${formatMonth(currentMonth.year, currentMonth.month)}\n2. Complete your payment\n\nThe deadline is ${formatDate(currentMonth.deadlineDate)}. After this date, all play days will be locked and no further changes are possible.\n\nLog in to the app now!\n\nBest regards,\nSquash League`,
       type: 'reminder',
       monthId: currentMonth.id,
     })

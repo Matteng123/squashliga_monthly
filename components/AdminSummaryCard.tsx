@@ -54,7 +54,7 @@ export default function AdminSummaryCard({ month, isCurrentMonth, isDeadlinePass
       <div className="space-y-2 max-h-48 overflow-y-auto">
         {month.playDays.map(playDay => (
           <div key={playDay.id} className="flex items-center justify-between text-sm px-2 py-1 bg-slate-900 rounded">
-            <span className="text-slate-300">{formatDate(playDay.date)}</span>
+            <span className="text-slate-300">{formatDate(playDay.date)} <span className="text-emerald-400 text-xs ml-1">{playDay.time}</span></span>
             <div className="flex items-center gap-2">
               <span className="text-slate-400">
                 <Users size={14} className="inline mr-1" />

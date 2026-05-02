@@ -57,7 +57,7 @@ export function generateAdminSummaries(
   for (const playDay of currentMonth.playDays) {
     const playerCount = playDay.playersJoined.length
     const courts = calculateCourtsRequired(playerCount, 4)
-    content += `${formatDate(playDay.date)}\n`
+    content += `${formatDate(playDay.date)}, ${playDay.time}\n`
     content += `Players: ${playerCount}\n`
     content += `Courts needed: ${courts}\n\n`
   }
@@ -109,7 +109,7 @@ export function generateBookingEmails(
     const playerCount = playDay.playersJoined.length
     if (playerCount === 0) continue
     const courts = calculateCourtsRequired(playerCount, 4)
-    content += `${formatDate(playDay.date)}\n`
+    content += `${formatDate(playDay.date)}, ${playDay.time}\n`
     content += `Spieler: ${playerCount} | Courts: ${courts}\n\n`
   }
 

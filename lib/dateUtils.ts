@@ -88,6 +88,7 @@ function generatePlayDaysForMonth(year: number, month: number, settings: LeagueS
         id: playDayId,
         date,
         dayOfWeek,
+        time: settings.playDayTimes?.[dayOfWeek] ?? '20:00 – 22:00',
         playersJoined: [],
         status: 'open',
         courtsRequired: 0,

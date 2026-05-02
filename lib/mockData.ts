@@ -12,6 +12,15 @@ export const MOCK_USERS: User[] = [
 
 export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
   playDays: ['Monday', 'Thursday'],
+  playDayTimes: {
+    Monday: '20:00 – 22:00',
+    Tuesday: '20:00 – 22:00',
+    Wednesday: '20:00 – 22:00',
+    Thursday: '20:00 – 22:00',
+    Friday: '20:00 – 22:00',
+    Saturday: '20:00 – 22:00',
+    Sunday: '20:00 – 22:00',
+  },
   playersPerCourt: 4,
   monthlyDeadline: 30,
   reminderDay: 25,

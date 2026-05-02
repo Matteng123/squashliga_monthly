@@ -63,6 +63,7 @@ export default function PlayDayCard({
         <div className="flex items-center gap-3 mb-2">
           <div>
             <h3 className="font-semibold text-white">{formatDate(playDay.date)}</h3>
+            <p className="text-sm text-emerald-400 font-medium">{playDay.time}</p>
             <p className="text-sm text-slate-400">
               <Users size={14} className="inline mr-1" />
               {playDay.playersJoined.length} {de.common.players}

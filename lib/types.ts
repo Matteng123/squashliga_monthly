@@ -15,6 +15,7 @@ export interface User {
 
 export interface LeagueSettings {
   playDays: DayOfWeek[]
+  playDayTimes: Partial<Record<DayOfWeek, string>>
   playersPerCourt: number
   monthlyDeadline: number
   reminderDay: number
@@ -27,6 +28,7 @@ export interface PlayDay {
   id: string
   date: Date
   dayOfWeek: DayOfWeek
+  time: string
   playersJoined: string[]
   status: PlayDayStatus
   courtsRequired: number

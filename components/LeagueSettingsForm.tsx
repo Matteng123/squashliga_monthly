@@ -44,19 +44,32 @@ export default function LeagueSettingsForm({ initialSettings }: Props) {
       {/* Play Days */}
       <div>
         <label className="label">Recurring Play Days</label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-2">
           {DAYS_OF_WEEK.map(day => (
-            <button
-              key={day}
-              onClick={() => handleToggleDay(day)}
-              className={`px-3 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                settings.playDays.includes(day)
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-              }`}
-            >
-              {day}
-            </button>
+            <div key={day} className="flex items-center gap-3">
+              <button
+                onClick={() => handleToggleDay(day)}
+                className={`px-3 py-2 rounded-lg font-semibold text-sm transition-colors w-32 flex-shrink-0 ${
+                  settings.playDays.includes(day)
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                {day}
+              </button>
+              {settings.playDays.includes(day) && (
+                <input
+                  type="text"
+                  value={settings.playDayTimes?.[day] ?? '20:00 – 22:00'}
+                  onChange={e => setSettings(s => ({
+                    ...s,
+                    playDayTimes: { ...s.playDayTimes, [day]: e.target.value },
+                  }))}
+                  placeholder="20:00 – 22:00"
+                  className="input flex-1 text-sm"
+                />
+              )}
+            </div>
           ))}
         </div>
         {settings.playDays.length === 0 && <p className="text-xs text-orange-500 mt-2">Select at least one day</p>}

@@ -16,6 +16,11 @@ interface Props {
 const statusConfig: { [key in MonthPlayerStatus]: { label: string; color: string; icon: string } } = {
   open: {
     label: de.payments.openStatus,
+    color: 'bg-slate-500/20 border-slate-500 text-slate-300',
+    icon: '○',
+  },
+  editing: {
+    label: de.payments.editingStatus,
     color: 'bg-blue-500/20 border-blue-500 text-blue-300',
     icon: '✏️',
   },

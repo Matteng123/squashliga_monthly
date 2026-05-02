@@ -78,6 +78,7 @@ export const en = {
     status: 'Status',
     paymentStatus: 'Payment Status',
     openStatus: 'Open',
+    editingStatus: 'Editing',
     committedStatus: 'Committed',
     paymentSubmittedStatus: 'Pending Review',
     confirmedStatus: 'Confirmed',

@@ -230,7 +230,10 @@ const useAppStore = create<Store>((set, get) => ({
           const playerStatus = new Map(m.playerStatus)
           const currentPayment = playerStatus.get(userId)
           if (currentPayment) {
-            playerStatus.set(userId, { ...currentPayment, costAmount: newCost })
+            const newStatus = (currentPayment.status === 'open' || currentPayment.status === 'editing')
+              ? (gamesJoined > 0 ? 'editing' : 'open')
+              : currentPayment.status
+            playerStatus.set(userId, { ...currentPayment, costAmount: newCost, status: newStatus })
           }
 
           return {

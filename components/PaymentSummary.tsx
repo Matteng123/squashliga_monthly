@@ -19,8 +19,9 @@ interface Props {
   paypalLink: string
 }
 
-const statusConfig = {
-  open: { label: de.payments.openStatus, color: 'text-blue-400', badge: 'bg-blue-500/20 border-blue-500' },
+const statusConfig: { [key in MonthPlayerStatus]: { label: string; color: string; badge: string } } = {
+  open: { label: de.payments.openStatus, color: 'text-slate-400', badge: 'bg-slate-500/20 border-slate-500' },
+  editing: { label: de.payments.editingStatus, color: 'text-blue-400', badge: 'bg-blue-500/20 border-blue-500' },
   committed: { label: de.payments.committedStatus, color: 'text-orange-400', badge: 'bg-orange-500/20 border-orange-500' },
   payment_submitted: { label: de.payments.paymentSubmittedStatus, color: 'text-yellow-400', badge: 'bg-yellow-500/20 border-yellow-500' },
   confirmed: { label: de.payments.confirmedStatus, color: 'text-emerald-400', badge: 'bg-emerald-500/20 border-emerald-500' },
@@ -88,7 +89,7 @@ export default function PaymentSummary({
             <p className={`text-sm font-semibold ${config.color}`}>{config.label}</p>
           </div>
 
-          {status === 'open' && onShowCloseConfirm && gamesJoined > 0 && (
+          {status === 'editing' && onShowCloseConfirm && gamesJoined > 0 && (
             <button
               onClick={onShowCloseConfirm}
               className="btn-primary text-sm px-3 py-1"
@@ -97,8 +98,8 @@ export default function PaymentSummary({
             </button>
           )}
 
-          {status === 'open' && gamesJoined === 0 && (
-            <p className="text-sm text-slate-500">Wählen Sie mindestens ein Spiel...</p>
+          {(status === 'open' || status === 'editing') && gamesJoined === 0 && (
+            <p className="text-sm text-slate-500">Select at least one game...</p>
           )}
 
           {status === 'committed' && !paymentMethod && onSelectPaymentMethod && (

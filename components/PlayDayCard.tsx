@@ -13,7 +13,7 @@ interface Props {
   isPlayerJoined: boolean
   isLocked: boolean
   isMonthCommitted?: boolean
-  paymentStatus?: 'open' | 'committed' | 'payment_submitted' | 'confirmed' | 'unpaid'
+  paymentStatus?: 'open' | 'editing' | 'committed' | 'payment_submitted' | 'confirmed' | 'unpaid'
   onToggle: () => void
 }
 

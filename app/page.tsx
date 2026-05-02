@@ -203,7 +203,7 @@ export default function Home() {
                   monthId={selectedMonth.id}
                   isPlayerJoined={playDay.playersJoined.includes(currentUser.id)}
                   isLocked={isMonthLocked}
-                  isMonthCommitted={paymentStatus !== 'open'}
+                  isMonthCommitted={paymentStatus !== 'open' && paymentStatus !== 'editing'}
                   paymentStatus={paymentStatus}
                   onToggle={() => togglePlayDay(selectedMonth.id, playDay.id)}
                 />

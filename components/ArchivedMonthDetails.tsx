@@ -23,12 +23,13 @@ export default function ArchivedMonthDetails({ month, users }: Props) {
     }))
     .filter(item => item.payment)
     .sort((a, b) => {
-      const statusOrder = { open: 0, committed: 1, payment_submitted: 2, confirmed: 3, unpaid: 4 }
+      const statusOrder = { open: 0, editing: 1, committed: 2, payment_submitted: 3, confirmed: 4, unpaid: 5 }
       return statusOrder[a.payment!.status] - statusOrder[b.payment!.status]
     })
 
   const statusColors: { [key: string]: string } = {
-    open: 'bg-blue-500/20 border-blue-500 text-blue-300',
+    open: 'bg-slate-500/20 border-slate-500 text-slate-300',
+    editing: 'bg-blue-500/20 border-blue-500 text-blue-300',
     committed: 'bg-orange-500/20 border-orange-500 text-orange-300',
     payment_submitted: 'bg-yellow-500/20 border-yellow-500 text-yellow-300',
     confirmed: 'bg-emerald-500/20 border-emerald-500 text-emerald-300',
@@ -37,6 +38,7 @@ export default function ArchivedMonthDetails({ month, users }: Props) {
 
   const statusLabels: { [key: string]: string } = {
     open: de.payments.openStatus,
+    editing: de.payments.editingStatus,
     committed: de.payments.committedStatus,
     payment_submitted: de.payments.paymentSubmittedStatus,
     confirmed: de.payments.confirmedStatus,

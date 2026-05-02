@@ -311,7 +311,7 @@ const useAppStore = create<Store>((set, get) => ({
         if (m.id === monthId) {
           const playerStatus = new Map(m.playerStatus)
           playerStatus.forEach((payment, playerId) => {
-            if (payment.status !== 'confirmed') {
+            if (payment.status === 'committed' || payment.status === 'payment_submitted') {
               playerStatus.set(playerId, { ...payment, status: 'unpaid' })
             }
           })

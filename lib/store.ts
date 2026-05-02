@@ -107,6 +107,8 @@ const useAppStore = create<Store>((set, get) => ({
   },
 
   setCurrentDate: (date: Date) => {
+    const prevMonths = get().months
+
     set(state => {
       let months = [...state.months]
 
@@ -138,13 +140,43 @@ const useAppStore = create<Store>((set, get) => ({
       }
 
       const cm = computeCurrentMonth(months, date)
+
+      // Cancel underpopulated play days at deadline
+      if (cm && date >= cm.deadlineDate) {
+        months = months.map(m => {
+          if (m.id !== cm.id) return m
+          const playerStatus = new Map(m.playerStatus)
+          const updatedPlayDays = m.playDays.map(pd => {
+            if (pd.status === 'cancelled') return pd
+            if (pd.playersJoined.length < state.leagueSettings.minimumPlayers) {
+              return { ...pd, status: 'cancelled' as const }
+            }
+            return pd
+          })
+          // Recalculate costs based on remaining non-cancelled games
+          playerStatus.forEach((payment, playerId) => {
+            if (['open', 'editing', 'committed', 'payment_submitted'].includes(payment.status)) {
+              const remainingGames = updatedPlayDays.filter(
+                pd => pd.status !== 'cancelled' && pd.playersJoined.includes(playerId)
+              ).length
+              const newCost = calculateCost(remainingGames)
+              if (newCost !== payment.costAmount) {
+                playerStatus.set(playerId, { ...payment, costAmount: newCost })
+              }
+            }
+          })
+          return { ...m, playDays: updatedPlayDays, playerStatus }
+        })
+      }
+
+      const updatedCm = computeCurrentMonth(months, date)
       const nm = computeNextMonth(months, date)
       return {
         currentDate: date,
         months,
-        currentMonth: cm,
+        currentMonth: updatedCm,
         nextMonth: nm,
-        monthDeadlinePassed: cm ? date >= cm.deadlineDate : false,
+        monthDeadlinePassed: updatedCm ? date >= updatedCm.deadlineDate : false,
       }
     })
 
@@ -156,6 +188,36 @@ const useAppStore = create<Store>((set, get) => ({
       updatedState.users,
       updatedState.mail,
     )
+
+    // Generate cancellation emails for newly cancelled play days
+    const cm = updatedState.currentMonth
+    if (cm && date >= cm.deadlineDate) {
+      const prevCm = prevMonths.find(m => m.id === cm.id)
+      for (const pd of cm.playDays) {
+        if (pd.status !== 'cancelled') continue
+        const prevPd = prevCm?.playDays.find(p => p.id === pd.id)
+        if (prevPd?.status === 'cancelled') continue // already cancelled before, email sent
+        for (const playerId of pd.playersJoined) {
+          const user = updatedState.users.find(u => u.id === playerId)
+          if (!user) continue
+          const prevCost = prevCm?.playerStatus.get(playerId)?.costAmount ?? 0
+          const newCost = cm.playerStatus.get(playerId)?.costAmount ?? 0
+          const credit = prevCost - newCost
+          const mailKey = `cancellation-${cm.id}-${pd.id}-${playerId}`
+          if (!updatedState.mail.some(m => m.id === mailKey)) {
+            newEmails.push({
+              id: mailKey,
+              timestamp: date,
+              recipient: playerId,
+              subject: `Play day cancelled – ${formatDate(pd.date)}`,
+              content: `Hi ${user.name},\n\nUnfortunately the play day on ${formatDate(pd.date)} has been cancelled due to insufficient players (minimum: ${updatedState.leagueSettings.minimumPlayers}).\n${credit > 0 ? `\nYour monthly cost has been reduced by €${credit.toFixed(2)}.\n` : ''}\nBest regards,\nSquash League`,
+              type: 'cancellation',
+              monthId: cm.id,
+            })
+          }
+        }
+      }
+    }
 
     if (newEmails.length > 0) {
       set(state => ({

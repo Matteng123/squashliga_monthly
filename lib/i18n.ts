@@ -179,6 +179,7 @@ export const en = {
     booking: 'Booking Email',
     paymentReminder: 'Payment Reminder',
     paymentConfirmation: 'Payment Confirmation',
+    cancellation: 'Play Day Cancellation',
   },
 
   // Emails

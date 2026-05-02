@@ -31,7 +31,8 @@ export default function PlayDayCard({
   // Determine if payment is confirmed (player paid for this game)
   const isConfirmed = paymentStatus === 'confirmed'
   const isUnpaid = paymentStatus === 'unpaid'
-  const isDisabled = isLocked || isMonthCommitted || isConfirmed
+  const isCancelled = playDay.status === 'cancelled'
+  const isDisabled = isLocked || isMonthCommitted || isConfirmed || isCancelled
 
   const handleToggle = () => {
     setIsLoading(true)
@@ -57,6 +58,7 @@ export default function PlayDayCard({
 
   return (
     <div className={`card flex items-start justify-between gap-4 ${
+      isCancelled ? 'opacity-60 border-l-4 border-l-red-700 bg-red-950/20' :
       isConfirmed && isPlayerJoined ? 'border-l-4 border-l-emerald-500 bg-emerald-950/20' : ''
     }`}>
       <div className="flex-1">
@@ -73,9 +75,13 @@ export default function PlayDayCard({
         </div>
 
         <div className="flex gap-2">
-          <span className={`badge ${playDay.status === 'open' ? 'badge-open' : 'badge-locked'}`}>
-            {playDay.status === 'open' ? de.common.open : de.common.locked}
-          </span>
+          {isCancelled ? (
+            <span className="badge bg-red-900/50 border-red-700 text-red-300">⛔ Cancelled</span>
+          ) : (
+            <span className={`badge ${playDay.status === 'open' ? 'badge-open' : 'badge-locked'}`}>
+              {playDay.status === 'open' ? de.common.open : de.common.locked}
+            </span>
+          )}
           {getPaymentBadge()}
         </div>
       </div>

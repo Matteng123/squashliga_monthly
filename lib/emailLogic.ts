@@ -96,8 +96,9 @@ export function generateBookingEmails(
   const bookingKey = `booking-${currentMonth.id}`
   if (existingMail.some(m => m.id === bookingKey)) return newMails
 
-  const uniquePlayers = new Set(currentMonth.playDays.flatMap(pd => pd.playersJoined)).size
-  const totalSlots = currentMonth.playDays.reduce((sum, pd) => sum + pd.playersJoined.length, 0)
+  const activeDays = currentMonth.playDays.filter(pd => pd.status !== 'cancelled')
+  const uniquePlayers = new Set(activeDays.flatMap(pd => pd.playersJoined)).size
+  const totalSlots = activeDays.reduce((sum, pd) => sum + pd.playersJoined.length, 0)
   const totalBase = uniquePlayers * 20
   const totalGames = totalSlots * 5
   const totalAmount = totalBase + totalGames
@@ -106,6 +107,7 @@ export function generateBookingEmails(
   content += `SPIELTAGE:\n\n`
 
   for (const playDay of currentMonth.playDays) {
+    if (playDay.status === 'cancelled') continue
     const playerCount = playDay.playersJoined.length
     if (playerCount === 0) continue
     const courts = calculateCourtsRequired(playerCount, 4)

@@ -19,11 +19,12 @@ export default function MailItem({ mail }: Props) {
       : users.find(u => u.id === mail.recipient)?.name || 'Unknown'
 
   const typeLabels: { [key: string]: string } = {
-    reminder: '📬 Erinnerung',
-    admin_summary: '📊 Admin-Zusammenfassung',
-    booking: '🎫 Buchung',
-    payment_reminder: '💳 Zahlungs-Erinnerung',
-    payment_confirmation: '✅ Zahlungsbestätigung',
+    reminder: '📬 Reminder',
+    admin_summary: '📊 Admin Summary',
+    booking: '🎫 Booking',
+    payment_reminder: '💳 Payment Reminder',
+    payment_confirmation: '✅ Payment Confirmation',
+    cancellation: '⛔ Cancellation',
   }
 
   return (

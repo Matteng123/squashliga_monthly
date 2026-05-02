@@ -94,6 +94,25 @@ export default function LeagueSettingsForm({ initialSettings }: Props) {
         </p>
       </div>
 
+      {/* Minimum players */}
+      <div>
+        <label className="label">Minimum Players per Play Day</label>
+        <input
+          type="number"
+          min="1"
+          max="20"
+          value={settings.minimumPlayers ?? 2}
+          onChange={e => {
+            setSettings(s => ({ ...s, minimumPlayers: parseInt(e.target.value) }))
+            setSaved(false)
+          }}
+          className="input"
+        />
+        <p className="text-xs text-slate-400 mt-2">
+          Play days with fewer players at the deadline will be cancelled and players credited.
+        </p>
+      </div>
+
       {/* Monthly deadline */}
       <div>
         <label className="label">Monthly Deadline (day of month)</label>

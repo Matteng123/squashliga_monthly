@@ -22,6 +22,7 @@ export const DEFAULT_LEAGUE_SETTINGS: LeagueSettings = {
     Sunday: '20:00 – 22:00',
   },
   playersPerCourt: 4,
+  minimumPlayers: 2,
   monthlyDeadline: 30,
   reminderDay: 25,
   bankAccountName: 'Squash Liga e.V.',

@@ -175,21 +175,21 @@ export function generatePaymentSubmittedReceipt(
   const paymentStatus = month.playerStatus.get(userId)
   if (!paymentStatus || paymentStatus.status !== 'payment_submitted') return null
 
-  const methodLabel = paymentStatus.paymentMethod === 'bank_transfer' ? 'Banküberweisung' : 'PayPal'
+  const methodLabel = paymentStatus.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'PayPal'
 
-  let content = `Hallo ${user.name},\n\n`
-  content += `wir haben Ihre Zahlungsangabe erhalten:\n\n`
-  content += `Betrag: €${paymentStatus.costAmount}\n`
-  content += `Monat: ${formatMonth(month.year, month.month)}\n`
-  content += `Zahlungsart: ${methodLabel}\n\n`
-  content += `Ihre Zahlung wird derzeit geprüft. Sobald der Eingang vom Admin bestätigt wurde, erhalten Sie eine detaillierte Bestätigungsmail mit allen Buchungsdaten.\n\n`
-  content += `Mit freundlichen Grüßen,\nSquash League`
+  let content = `Hi ${user.name},\n\n`
+  content += `We have received your payment details:\n\n`
+  content += `Amount: €${paymentStatus.costAmount}\n`
+  content += `Month: ${formatMonth(month.year, month.month)}\n`
+  content += `Payment method: ${methodLabel}\n\n`
+  content += `Your payment is currently being reviewed. Once confirmed by the admin, you will receive a detailed confirmation email.\n\n`
+  content += `Best regards,\nSquash League`
 
   return {
     id: `payment-receipt-${month.id}-${userId}`,
     timestamp: currentDate,
     recipient: userId,
-    subject: `Zahlungseingang erfasst – ${formatMonth(month.year, month.month)}`,
+    subject: `Payment received – ${formatMonth(month.year, month.month)}`,
     content,
     type: 'payment_confirmation',
     monthId: month.id,
@@ -204,63 +204,55 @@ export function generatePaymentConfirmationSummary(
   leagueSettings: LeagueSettings,
 ): Mail | null {
   const user = users.find(u => u.id === userId)
-  if (!user) {
-    console.log('❌ User nicht gefunden:', userId)
-    return null
-  }
+  if (!user) return null
 
   const paymentStatus = month.playerStatus.get(userId)
-  console.log('📧 generatePaymentConfirmationSummary:', { userId, monthId: month.id, status: paymentStatus?.status })
-  if (!paymentStatus || paymentStatus.status !== 'confirmed') {
-    console.log('❌ Payment status nicht confirmed:', paymentStatus?.status)
-    return null
-  }
+  if (!paymentStatus || paymentStatus.status !== 'confirmed') return null
 
-  // Get the play days the user joined
   const joinedPlayDays = month.playDays.filter(pd => pd.playersJoined.includes(userId))
   const gamesCount = joinedPlayDays.length
   const baseFee = gamesCount > 0 ? 20 : 0
   const gamesFee = gamesCount * 5
 
-  let content = `Hallo ${user.name},\n\n`
-  content += `vielen Dank! Ihre Zahlung von €${paymentStatus.costAmount} für ${formatMonth(month.year, month.month)} wurde bestätigt.\n\n`
+  let content = `Hi ${user.name},\n\n`
+  content += `Thank you! Your payment of €${paymentStatus.costAmount} for ${formatMonth(month.year, month.month)} has been confirmed.\n\n`
 
   if (joinedPlayDays.length > 0) {
-    content += `=== GEBUCHTE SPIELTAGE ===\n`
+    content += `=== BOOKED PLAY DAYS ===\n`
     for (const playDay of joinedPlayDays) {
       content += `• ${formatDate(playDay.date)}\n`
     }
     content += `\n`
   }
 
-  content += `=== KOSTENAUFSCHLÜSSELUNG ===\n`
+  content += `=== COST BREAKDOWN ===\n`
   if (baseFee > 0) {
-    content += `Basisgebühr: €${baseFee.toFixed(2)}\n`
-    content += `Spielgebühren: ${gamesCount} × €5,00 = €${gamesFee.toFixed(2)}\n`
+    content += `Base fee: €${baseFee.toFixed(2)}\n`
+    content += `Games fee: ${gamesCount} × €5.00 = €${gamesFee.toFixed(2)}\n`
     content += `─────────────────────\n`
   }
-  content += `Gesamtkosten: €${paymentStatus.costAmount.toFixed(2)}\n\n`
+  content += `Total: €${paymentStatus.costAmount.toFixed(2)}\n\n`
 
-  content += `=== ZAHLUNGSINFORMATIONEN ===\n`
-  content += `Zahlungsart: ${paymentStatus.paymentMethod === 'bank_transfer' ? 'Banküberweisung' : 'PayPal'}\n`
+  content += `=== PAYMENT DETAILS ===\n`
+  content += `Method: ${paymentStatus.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'PayPal'}\n`
   if (paymentStatus.paymentConfirmedAt) {
-    content += `Bestätigt am: ${formatDate(paymentStatus.paymentConfirmedAt)}\n`
+    content += `Confirmed on: ${formatDate(paymentStatus.paymentConfirmedAt)}\n`
   }
 
   if (paymentStatus.paymentMethod === 'bank_transfer') {
-    content += `\nKontoinhaber: ${leagueSettings.bankAccountName}\n`
+    content += `\nAccount holder: ${leagueSettings.bankAccountName}\n`
     content += `IBAN: ${leagueSettings.bankAccountIBAN}\n`
   } else if (paymentStatus.paymentMethod === 'paypal') {
-    content += `\nPayPal Link: ${leagueSettings.paypalLink}\n`
+    content += `\nPayPal link: ${leagueSettings.paypalLink}\n`
   }
 
-  content += `\nMit freundlichen Grüßen,\nSquash League`
+  content += `\nBest regards,\nSquash League`
 
   return {
     id: `payment-confirmation-${month.id}-${userId}`,
     timestamp: currentDate,
     recipient: userId,
-    subject: `Zahlung bestätigt – ${formatMonth(month.year, month.month)}`,
+    subject: `Payment confirmed – ${formatMonth(month.year, month.month)}`,
     content,
     type: 'payment_confirmation',
     monthId: month.id,

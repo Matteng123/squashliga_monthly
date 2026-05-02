@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { de } from '@/lib/i18n'
 
 interface Props {
@@ -21,9 +23,12 @@ export default function PaymentInfoModal({
   paypalLink,
   costAmount,
 }: Props) {
-  if (!isOpen) return null
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
-  return (
+  if (!isOpen || !mounted) return null
+
+  return createPortal(
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4 overflow-y-auto">
       <div className="card max-w-md w-full my-8">
         <h2 className="text-xl font-bold text-white mb-4">{de.payments.paymentInfo}</h2>
@@ -82,6 +87,7 @@ export default function PaymentInfoModal({
           {de.payments.cancel}
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

@@ -193,16 +193,22 @@ const useAppStore = create<Store>((set, get) => ({
     const cm = updatedState.currentMonth
     if (cm && date >= cm.deadlineDate) {
       const prevCm = prevMonths.find(m => m.id === cm.id)
+      // Track all refunds for the admin summary
+      const refundLines: string[] = []
+
       for (const pd of cm.playDays) {
         if (pd.status !== 'cancelled') continue
         const prevPd = prevCm?.playDays.find(p => p.id === pd.id)
         if (prevPd?.status === 'cancelled') continue // already cancelled before, email sent
+
         for (const playerId of pd.playersJoined) {
           const user = updatedState.users.find(u => u.id === playerId)
           if (!user) continue
           const prevCost = prevCm?.playerStatus.get(playerId)?.costAmount ?? 0
           const newCost = cm.playerStatus.get(playerId)?.costAmount ?? 0
           const credit = prevCost - newCost
+
+          // Player cancellation email
           const mailKey = `cancellation-${cm.id}-${pd.id}-${playerId}`
           if (!updatedState.mail.some(m => m.id === mailKey)) {
             newEmails.push({
@@ -210,11 +216,32 @@ const useAppStore = create<Store>((set, get) => ({
               timestamp: date,
               recipient: playerId,
               subject: `Play day cancelled – ${formatDate(pd.date)}`,
-              content: `Hi ${user.name},\n\nUnfortunately the play day on ${formatDate(pd.date)} has been cancelled due to insufficient players (minimum: ${updatedState.leagueSettings.minimumPlayers}).\n${credit > 0 ? `\nYour monthly cost has been reduced by €${credit.toFixed(2)}.\n` : ''}\nBest regards,\nSquash League`,
+              content: `Hi ${user.name},\n\nUnfortunately the play day on ${formatDate(pd.date)} has been cancelled due to insufficient players (minimum: ${updatedState.leagueSettings.minimumPlayers}).\n${credit > 0 ? `\nYour monthly cost has been reduced by €${credit.toFixed(2)}. We will transfer this amount back to you.\n` : ''}\nBest regards,\nSquash League`,
               type: 'cancellation',
               monthId: cm.id,
             })
           }
+
+          if (credit > 0) {
+            refundLines.push(`• ${user.name} (${user.email}) – €${credit.toFixed(2)} – Play day: ${formatDate(pd.date)}`)
+          }
+        }
+      }
+
+      // Admin refund summary email (one per deadline, if there are any refunds)
+      if (refundLines.length > 0) {
+        const adminMailKey = `cancellation-admin-${cm.id}`
+        if (!updatedState.mail.some(m => m.id === adminMailKey)) {
+          const refundTotal = refundLines.length
+          newEmails.push({
+            id: adminMailKey,
+            timestamp: date,
+            recipient: 'admin',
+            subject: `[Admin] Cancellation refunds – ${formatMonth(cm.year, cm.month)}`,
+            content: `Hi Admin,\n\nThe following play days were cancelled this month due to insufficient players.\nPlease transfer the refunds to the players listed below.\n\n=== REFUNDS ===\n\n${refundLines.join('\n')}\n\nTotal refunds: ${refundTotal} player${refundTotal !== 1 ? 's' : ''}\n\nNote: Once player profiles are set up, PayPal.me addresses will be listed here.\n\nBest regards,\nSquash League`,
+            type: 'cancellation',
+            monthId: cm.id,
+          })
         }
       }
     }

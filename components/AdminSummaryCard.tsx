@@ -6,6 +6,7 @@ import { formatMonth, formatDate } from '@/lib/dateUtils'
 import { Users, ChevronDown, ChevronUp } from 'lucide-react'
 import { de } from '@/lib/i18n'
 import PaymentStatusTable from './PaymentStatusTable'
+import AdminCompleteMonthModal from './AdminCompleteMonthModal'
 
 interface Props {
   month: Month
@@ -18,6 +19,7 @@ interface Props {
 
 export default function AdminSummaryCard({ month, isCurrentMonth, isDeadlinePassed, onCompleteMonth, users, onMarkConfirmed }: Props) {
   const [showPaymentStatus, setShowPaymentStatus] = useState(isCurrentMonth)
+  const [showCompleteModal, setShowCompleteModal] = useState(false)
   const uniquePlayers = new Set(month.playDays.flatMap(pd => pd.playersJoined)).size
   const totalSlots = month.playDays.reduce((sum, pd) => sum + pd.playersJoined.length, 0)
 
@@ -109,12 +111,23 @@ export default function AdminSummaryCard({ month, isCurrentMonth, isDeadlinePass
 
       {/* Archive Month Button */}
       {month.status === 'active' && onCompleteMonth && (
-        <button
-          onClick={onCompleteMonth}
-          className="mt-4 w-full btn-primary text-sm"
-        >
-          {de.admin.completeMonth}
-        </button>
+        <>
+          <button
+            onClick={() => setShowCompleteModal(true)}
+            className="mt-4 w-full btn-primary text-sm"
+          >
+            {de.admin.completeMonth}
+          </button>
+          <AdminCompleteMonthModal
+            isOpen={showCompleteModal}
+            monthLabel={formatMonth(month.year, month.month)}
+            onClose={() => setShowCompleteModal(false)}
+            onConfirm={() => {
+              onCompleteMonth()
+              setShowCompleteModal(false)
+            }}
+          />
+        </>
       )}
 
       {month.status === 'archived' && (

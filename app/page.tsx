@@ -36,7 +36,6 @@ export default function Home() {
   const setPaymentMethod = useAppStore(s => s.setPaymentMethod)
   const recordPayment = useAppStore(s => s.recordPayment)
   const markPaymentConfirmed = useAppStore(s => s.markPaymentConfirmed)
-  const autoCommitUnfinishedMonths = useAppStore(s => s.autoCommitUnfinishedMonths)
   const [selectedMonth, setSelectedMonth] = useState<any>(null)
   const [page, setPage] = useState<'role' | 'player' | 'admin' | 'mail'>('role')
   const [showPaymentMethodSelector, setShowPaymentMethodSelector] = useState(false)
@@ -75,14 +74,14 @@ export default function Home() {
     }
   }, [months, selectedMonth])
 
+  // Auto-switch to current month for players when the calendar flips to a new month
   useEffect(() => {
-    if (page === 'player' && selectedMonth && currentDate >= selectedMonth.deadlineDate) {
-      const playerPaymentStatus = selectedMonth.playerStatus.get(currentUserId || '')
-      if (playerPaymentStatus?.status === 'open') {
-        autoCommitUnfinishedMonths(selectedMonth.id)
-      }
+    if (page === 'player' && currentMonth && selectedMonth) {
+      const selectedIsPast = selectedMonth.year < currentMonth.year ||
+        (selectedMonth.year === currentMonth.year && selectedMonth.month < currentMonth.month)
+      if (selectedIsPast) setSelectedMonth(currentMonth)
     }
-  }, [page, selectedMonth, currentDate, currentUserId, autoCommitUnfinishedMonths])
+  }, [currentMonth, page])
 
   if (!currentUserId || !currentUser) {
     return (

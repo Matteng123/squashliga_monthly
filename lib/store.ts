@@ -94,14 +94,17 @@ const useAppStore = create<Store>((set, get) => ({
 
   initApp: () => {
     set(state => {
-      const months = generateMonthsFrom(state.currentDate, 3, state.leagueSettings, state.users)
-      const cm = computeCurrentMonth(months, state.currentDate)
-      const nm = computeNextMonth(months, state.currentDate)
+      const date = state.currentDate
+      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+      const monthCount = lastDay - date.getDate() <= 7 ? 2 : 1
+      const months = generateMonthsFrom(date, monthCount, state.leagueSettings, state.users)
+      const cm = computeCurrentMonth(months, date)
+      const nm = computeNextMonth(months, date)
       return {
         months,
         currentMonth: cm,
         nextMonth: nm,
-        monthDeadlinePassed: cm ? state.currentDate >= cm.deadlineDate : false,
+        monthDeadlinePassed: cm ? date >= cm.deadlineDate : false,
       }
     })
   },
@@ -112,32 +115,23 @@ const useAppStore = create<Store>((set, get) => ({
     set(state => {
       let months = [...state.months]
 
-      // Ensure we have the current month
+      // Ensure current month exists
       if (!months.some(m => m.year === date.getFullYear() && m.month === date.getMonth())) {
-        const newMonths = generateMonthsFrom(date, 2, state.leagueSettings, state.users)
-        months = [...months, ...newMonths.filter(nm => !months.some(m => m.id === nm.id))]
+        const [newMonth] = generateMonthsFrom(date, 1, state.leagueSettings, state.users)
+        if (newMonth && !months.some(m => m.id === newMonth.id)) months = [...months, newMonth]
       }
 
-      // Sort and ensure we always have at least 3 ACTIVE months from current date
+      // Open next month exactly 7 days before current month ends
+      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
+      if (lastDay - date.getDate() <= 7) {
+        const nextStart = new Date(date.getFullYear(), date.getMonth() + 1, 1)
+        if (!months.some(m => m.year === nextStart.getFullYear() && m.month === nextStart.getMonth())) {
+          const [nextMonth] = generateMonthsFrom(nextStart, 1, state.leagueSettings, state.users)
+          if (nextMonth && !months.some(m => m.id === nextMonth.id)) months = [...months, nextMonth]
+        }
+      }
+
       months = months.sort((a, b) => a.deadlineDate.getTime() - b.deadlineDate.getTime())
-
-      const futureActiveMonths = months.filter(m =>
-        m.status === 'active' && (
-          m.year > date.getFullYear() ||
-          (m.year === date.getFullYear() && m.month >= date.getMonth())
-        )
-      )
-
-      if (futureActiveMonths.length < 3) {
-        const lastActiveMonth = months.filter(m => m.status === 'active').pop()
-        const nextStart = lastActiveMonth
-          ? new Date(lastActiveMonth.year, lastActiveMonth.month + 1)
-          : date
-        const neededCount = 3 - futureActiveMonths.length
-        const newMonths = generateMonthsFrom(nextStart, neededCount, state.leagueSettings, state.users)
-        months = [...months, ...newMonths.filter(nm => !months.some(m => m.id === nm.id))]
-        months = months.sort((a, b) => a.deadlineDate.getTime() - b.deadlineDate.getTime())
-      }
 
       const cm = computeCurrentMonth(months, date)
 
@@ -264,7 +258,9 @@ const useAppStore = create<Store>((set, get) => ({
   updateLeagueSettings: (settings: LeagueSettings) => {
     set(state => {
       const currentDate = state.currentDate
-      const newMonths = generateMonthsFrom(currentDate, 3, settings, state.users)
+      const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
+      const monthCount = lastDay - currentDate.getDate() <= 7 ? 2 : 1
+      const newMonths = generateMonthsFrom(currentDate, monthCount, settings, state.users)
       const cm = computeCurrentMonth(newMonths, currentDate)
       const nm = computeNextMonth(newMonths, currentDate)
 
